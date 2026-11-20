@@ -1,4 +1,7 @@
 {
   "outputDirectory": "public",
-  "functions": { "api/chat.js": { "maxDuration": 60 } }
+  "functions": {
+    "api/chat.js": { "maxDuration": 60, "includeFiles": "node_modules/astronomy-engine/**" },
+    "api/salud.js": { "includeFiles": "node_modules/astronomy-engine/**" }
+  }
 }
