@@ -5,6 +5,7 @@ import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { SISTEMA, SALUDO } from "../lib/prompt.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
 import { tirar, TIRADAS } from "../lib/mazo.js";
+import { verificarAcceso, idValido, datosDeposito } from "../lib/acceso.js";
 
 const client = new Anthropic();
 
@@ -51,6 +52,16 @@ export default async function handler(req, res) {
   catch { return res.status(400).json({ error: "La conversación no es válida." }); }
   const mensajes = limpiarHistorial(body.messages);
   if (!mensajes) return res.status(400).json({ error: "La conversación no es válida." });
+
+  // Consultas gratis y suscripción.
+  if (!idValido(body.dispositivo) || !idValido(body.consulta)) return res.status(400).json({ error: "Recarga la página para empezar una consulta." });
+  try {
+    const acceso = await verificarAcceso({ dispositivo: body.dispositivo, consulta: body.consulta, ip });
+    if (!acceso.permitido) return res.status(402).json({ suscripcion: true, pendiente: acceso.pendiente, ...datosDeposito() });
+  } catch (e) {
+    console.error("Acceso", e);
+    return res.status(503).json({ error: "No pude verificar tu acceso. Intenta de nuevo en un momento." });
+  }
 
   // Foto de la tirada: se adjunta al último mensaje del usuario.
   const img = body.image;

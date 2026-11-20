@@ -56,6 +56,19 @@ textarea{flex:1;min-width:0;resize:none;background:var(--cloth);color:var(--ink)
 .icon:disabled{opacity:.4;cursor:default}
 button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
 .foot{font-size:12px;color:var(--mist);text-align:center}
+.paywall{align-self:stretch;border:1px solid var(--candle);border-radius:16px;padding:20px;background:var(--cloth);display:flex;flex-direction:column;gap:12px}
+.paywall h2{font-family:var(--display);font-size:28px;font-weight:600;margin:0;line-height:1.15}
+.paywall p{margin:0;color:var(--mist)}
+.paywall .price{font-family:var(--display);font-size:22px;color:var(--ink)}
+.paywall form{display:grid;gap:10px}
+.paywall label{font-size:14px;color:var(--mist);display:grid;gap:4px}
+.paywall input[type=text],.paywall input[type=email],.paywall input[type=tel]{background:var(--night);color:var(--ink);border:1px solid var(--veil);border-radius:10px;padding:11px 12px;font:16px var(--body)}
+.paywall .check{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.paywall .check input{margin-top:3px}
+.paywall .cuenta{white-space:pre-wrap;background:var(--night);border:1px dashed var(--candle);border-radius:10px;padding:12px;color:var(--ink);font-size:15px}
+.paywall .err{color:var(--rose);font-size:14px}
+.btn.wa{background:#25d366;border-color:#25d366;color:#0b2a17;text-decoration:none;justify-content:center}
+
 @media (prefers-reduced-motion:no-preference){.msg.thinking{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{opacity:.5}}}
 </style>
 </head>
@@ -65,6 +78,7 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
     <a class="back" href="/" aria-label="Volver a la página de inicio">‹</a>
     <div class="avatar" aria-hidden="true">A</div>
     <div class="who"><b>Arcana</b><small>Asistente virtual de Diana</small></div>
+    <button class="linkbtn" id="nueva" type="button">✦ Nueva consulta</button>
     <button class="linkbtn" id="mute" type="button">🔊 Voz activada</button>
   </header>
 
@@ -95,6 +109,10 @@ const SALUDO = "Hola, soy Arcana, la asistente virtual de Diana. Estoy aquí par
 const $ = (id) => document.getElementById(id);
 const log = $("log"), box = $("box"), sendBtn = $("send"), micBtn = $("mic"), photoBtn = $("photoBtn"), photo = $("photo");
 const historial = [];   // {role, content} que se envía al servidor (sin el saludo)
+const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+let dispositivo;
+try { dispositivo = localStorage.getItem("arcana-dispositivo"); if (!dispositivo) { dispositivo = nuevoId(); localStorage.setItem("arcana-dispositivo", dispositivo); } } catch { dispositivo = nuevoId(); }
+let consulta = nuevoId();
 let busy = false, started = false, voiceOn = true, pendingImage = null;
 
 /* ---------- Voz de Arcana (síntesis del navegador, gratis) ---------- */
@@ -178,7 +196,7 @@ async function send() {
   if (!started) begin(false);
   callar();
   const img = pendingImage;
-  addMsg("u", text || "Aquí está la foto de mi tirada.", img && img.url);
+  const msgU = addMsg("u", text || "Aquí está la foto de mi tirada.", img && img.url);
   historial.push({ role: "user", content: text || "Aquí está la foto de mi tirada." });
   box.value = ""; autosize(); clearPhoto();
   busy = true; sendBtn.disabled = true;
@@ -186,10 +204,11 @@ async function send() {
   try {
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
+      body: JSON.stringify({ dispositivo, consulta, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");
+    if (r.status === 402 && j.suscripcion) { bubble.remove(); msgU.remove(); historial.pop(); box.value = text; autosize(); if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
     if (!r.ok) { bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
     if (j.cartas) { bubble.remove(); mostrarCartas(j.cartas); log.appendChild(bubble); }
     bubble.textContent = j.text;
@@ -206,6 +225,86 @@ async function send() {
 
 function autosize() { box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 140) + "px"; }
 function clearPhoto() { pendingImage = null; photo.value = ""; $("preview").hidden = true; }
+
+/* ---------- Suscripción ---------- */
+function el(tag, attrs, ...hijos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) { if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v); }
+  for (const h of hijos) if (h) e.append(h);
+  return e;
+}
+function enlaceWhatsapp(datos, referencia, nombre) {
+  if (!datos.whatsapp) return null;
+  const msg = `Hola Diana, envío mi comprobante de la suscripción a Arcana. Referencia: ${referencia}${nombre ? ". Nombre: " + nombre : ""}.`;
+  return el("a", { class: "btn wa", href: `https://wa.me/${datos.whatsapp}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", text: "Enviar comprobante por WhatsApp" });
+}
+function pantallaDeposito(card, datos, referencia, nombre) {
+  card.replaceChildren(
+    el("h2", { text: "¡Gracias! Solo falta tu depósito" }),
+    el("p", { text: `Deposita o transfiere $${datos.precio} a esta cuenta y envía el comprobante. Diana activará tu suscripción por 30 días al confirmarlo.` }),
+    el("div", { class: "cuenta", text: datos.cuenta }),
+    el("p", { text: `Tu código de referencia: ${referencia}. Escríbelo en la transferencia o en tu mensaje.` }),
+    enlaceWhatsapp(datos, referencia, nombre),
+    el("p", { text: "Cuando Diana te confirme, vuelve aquí y continúa tu consulta." }),
+  );
+}
+function formularioAcceso(card, datos) {
+  const err = el("p", { class: "err" });
+  const f = el("form", {},
+    el("label", {}, "Email", el("input", { type: "email", name: "email", required: "", autocomplete: "email" })),
+    el("label", {}, "Teléfono", el("input", { type: "tel", name: "telefono", required: "", autocomplete: "tel" })),
+    err, el("button", { class: "btn", type: "submit", text: "Entrar" }));
+  f.onsubmit = async (e) => {
+    e.preventDefault(); err.textContent = "";
+    const fd = new FormData(f);
+    const r = await fetch("/api/acceder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dispositivo, email: fd.get("email"), telefono: fd.get("telefono") }) }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok) { err.textContent = j.error || "No hay conexión. Intenta de nuevo."; return; }
+    if (j.activa) { card.replaceChildren(el("h2", { text: "¡Bienvenida de nuevo!" }), el("p", { text: "Tu suscripción está activa. Envía tu mensaje para continuar." })); box.focus(); }
+    else err.textContent = j.mensaje;
+  };
+  const volver = el("button", { class: "linkbtn", type: "button", text: "Volver" });
+  volver.onclick = () => mostrarSuscripcion(datos, card);
+  card.replaceChildren(el("h2", { text: "Ya soy suscriptora" }), el("p", { text: "Escribe el email y el teléfono con los que te suscribiste." }), f, volver);
+}
+function mostrarSuscripcion(datos, cardExistente) {
+  callar();
+  const card = cardExistente || el("div", { class: "paywall", role: "region", "aria-label": "Suscripción" });
+  if (datos.pendiente) {
+    pantallaDeposito(card, datos, datos.pendiente, "");
+    card.prepend(el("p", { class: "price", text: "Tu solicitud está pendiente de confirmación." }));
+  } else {
+    const err = el("p", { class: "err" });
+    const f = el("form", {},
+      el("label", {}, "Nombre completo", el("input", { type: "text", name: "nombre", required: "", autocomplete: "name" })),
+      el("label", {}, "Teléfono (WhatsApp)", el("input", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567" })),
+      el("label", {}, "Email", el("input", { type: "email", name: "email", required: "", autocomplete: "email" })),
+      el("label", { class: "check" }, el("input", { type: "checkbox", name: "acepto", required: "" }), "Autorizo a Diana Arcana a usar estos datos solo para gestionar mi suscripción y contactarme."),
+      err, el("button", { class: "btn", type: "submit", text: "Quiero suscribirme" }));
+    f.onsubmit = async (e) => {
+      e.preventDefault(); err.textContent = "";
+      const fd = new FormData(f), boton = f.querySelector("button"); boton.disabled = true;
+      const r = await fetch("/api/suscribir", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dispositivo, nombre: fd.get("nombre"), telefono: fd.get("telefono"), email: fd.get("email"), acepto: fd.get("acepto") === "on" }) }).catch(() => null);
+      const j = r ? await r.json().catch(() => ({})) : {};
+      boton.disabled = false;
+      if (!r || !r.ok) { err.textContent = j.error || "No hay conexión. Intenta de nuevo."; return; }
+      pantallaDeposito(card, j, j.referencia, fd.get("nombre"));
+    };
+    const ya = el("button", { class: "linkbtn", type: "button", text: "Ya soy suscriptora" });
+    ya.onclick = () => formularioAcceso(card, datos);
+    card.replaceChildren(
+      el("h2", { text: "Tus consultas gratis ya se usaron" }),
+      el("p", { text: "Suscríbete y consulta con Arcana sin límite: tarot, carta astral, rituales y registros akáshicos." }),
+      el("p", { class: "price", text: `$${datos.precio} al mes` }), f, ya);
+  }
+  if (!cardExistente) { log.querySelectorAll(".paywall").forEach((x) => x.remove()); log.appendChild(card); log.scrollTop = log.scrollHeight; }
+}
+
+$("nueva").onclick = () => {
+  callar(); historial.length = 0; consulta = nuevoId(); started = false; clearPhoto();
+  log.replaceChildren(); begin(true); box.focus();
+};
 
 $("start").onclick = () => { begin(true); box.focus(); };
 sendBtn.onclick = send;

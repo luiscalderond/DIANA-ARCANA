@@ -1,0 +1,28 @@
+-- Tablas de Diana Arcana. Solo el servidor (clave de servicio) las lee y escribe:
+-- RLS activado sin políticas bloquea el acceso público.
+create table if not exists public.arcana_suscriptoras (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  telefono text not null,
+  email text not null,
+  referencia text not null,
+  dispositivos text[] not null default '{}',
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'activa', 'inactiva')),
+  activa_hasta timestamptz,
+  acepto_datos boolean not null default false,
+  creada timestamptz not null default now()
+);
+create index if not exists arcana_suscriptoras_dispositivos_idx on public.arcana_suscriptoras using gin (dispositivos);
+create index if not exists arcana_suscriptoras_email_idx on public.arcana_suscriptoras (email);
+
+create table if not exists public.arcana_consultas (
+  id text primary key,
+  dispositivo text not null,
+  ip text,
+  suscriptora_id uuid references public.arcana_suscriptoras (id) on delete set null,
+  creada timestamptz not null default now()
+);
+create index if not exists arcana_consultas_dispositivo_idx on public.arcana_consultas (dispositivo);
+
+alter table public.arcana_suscriptoras enable row level security;
+alter table public.arcana_consultas enable row level security;

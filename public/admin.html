@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Suscriptoras · Diana Arcana</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Karla:wght@400;700&display=swap">
+<style>
+:root{--night:#16121f;--cloth:#211a2e;--veil:#2e2540;--candle:#d9b46a;--ink:#efe8f5;--mist:#b5aac4;--rose:#c98a9a;--ok:#8fc9a0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--night);color:var(--ink);font:16px/1.5 Karla,system-ui,sans-serif;padding:24px 16px}
+main{max-width:860px;margin:0 auto;display:grid;gap:16px}
+h1{font:600 34px "Cormorant Garamond",serif;margin:0}
+p{margin:0;color:var(--mist)}
+form,.fila{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{background:var(--cloth);color:var(--ink);border:1px solid var(--veil);border-radius:10px;padding:10px 12px;font:16px Karla,sans-serif}
+button{border-radius:999px;border:1px solid var(--candle);background:var(--candle);color:var(--night);font-weight:700;padding:9px 18px;cursor:pointer;font-size:15px}
+button.sec{background:transparent;color:var(--candle)}
+.card{background:var(--cloth);border:1px solid var(--veil);border-radius:14px;padding:14px 16px;display:grid;gap:6px}
+.card b{font-size:18px}
+.est{font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;border:1px solid}
+.est.pendiente{color:var(--candle)} .est.activa{color:var(--ok)} .est.inactiva,.est.vencida{color:var(--rose)}
+a{color:var(--candle)}
+.err{color:var(--rose)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>Suscriptoras</h1>
+  <form id="login">
+    <input type="password" id="clave" placeholder="Clave de administración" autocomplete="current-password" required>
+    <button type="submit">Entrar</button>
+  </form>
+  <p class="err" id="err"></p>
+  <section id="panel" hidden>
+    <div class="fila" style="margin-bottom:12px">
+      <select id="filtro"><option value="">Todas</option><option value="pendiente">Pendientes</option><option value="activa">Activas</option><option value="vencida">Vencidas</option><option value="inactiva">Inactivas</option></select>
+      <input id="buscar" placeholder="Buscar nombre, teléfono o referencia">
+      <button class="sec" id="recargar" type="button">Actualizar</button>
+    </div>
+    <p id="resumen" style="margin-bottom:12px"></p>
+    <div id="lista" style="display:grid;gap:10px"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let clave = "", datos = [];
+try { clave = sessionStorage.getItem("arcana-admin") || ""; } catch {}
+
+async function api(metodo, cuerpo) {
+  const r = await fetch("/api/admin", { method: metodo, headers: { "Content-Type": "application/json", "x-admin-clave": clave }, body: cuerpo ? JSON.stringify(cuerpo) : undefined }).catch(() => null);
+  const j = r ? await r.json().catch(() => ({})) : {};
+  if (!r || !r.ok) throw new Error(j.error || "Sin conexión.");
+  return j;
+}
+const estado = (s) => s.estado === "activa" && s.activa_hasta && new Date(s.activa_hasta) <= new Date() ? "vencida" : s.estado;
+const fecha = (x) => x ? new Date(x).toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "";
+const wa = (tel) => { let d = String(tel).replace(/\D/g, ""); if (d.startsWith("0")) d = "593" + d.slice(1); return "https://wa.me/" + d; };
+
+function pintar() {
+  const f = $("filtro").value, q = $("buscar").value.trim().toLowerCase();
+  const filas = datos.filter((s) => (!f || estado(s) === f) && (!q || [s.nombre, s.telefono, s.email, s.referencia].join(" ").toLowerCase().includes(q)));
+  const n = (e) => datos.filter((s) => estado(s) === e).length;
+  $("resumen").textContent = `${n("activa")} activas · ${n("pendiente")} pendientes · ${n("vencida")} vencidas`;
+  $("lista").replaceChildren(...filas.map((s) => {
+    const e = estado(s), c = document.createElement("div"); c.className = "card";
+    const t = document.createElement("div"); t.className = "fila";
+    const b = document.createElement("b"); b.textContent = s.nombre;
+    const est = document.createElement("span"); est.className = "est " + e; est.textContent = e + (e === "activa" ? " hasta " + fecha(s.activa_hasta) : "");
+    t.append(b, est);
+    const info = document.createElement("p");
+    info.textContent = `Ref. ${s.referencia} · ${s.telefono} · ${s.email} · pidió el ${fecha(s.creada)}`;
+    const acc = document.createElement("div"); acc.className = "fila";
+    const act = document.createElement("button"); act.textContent = e === "activa" ? "Sumar 30 días" : "Activar 30 días";
+    act.onclick = () => accion(s.id, "activar", act);
+    acc.append(act);
+    if (e === "activa") { const des = document.createElement("button"); des.className = "sec"; des.textContent = "Desactivar"; des.onclick = () => accion(s.id, "desactivar", des); acc.append(des); }
+    const w = document.createElement("a"); w.href = wa(s.telefono); w.target = "_blank"; w.rel = "noopener"; w.textContent = "WhatsApp";
+    acc.append(w);
+    c.append(t, info, acc); return c;
+  }));
+  if (!filas.length) $("lista").textContent = "No hay suscriptoras con ese filtro.";
+}
+async function cargar() {
+  $("err").textContent = "";
+  try { datos = (await api("GET")).suscriptoras || []; $("login").hidden = true; $("panel").hidden = false; pintar(); }
+  catch (e) { $("err").textContent = e.message; if (/Clave/.test(e.message)) { $("login").hidden = false; $("panel").hidden = true; } }
+}
+async function accion(id, accion, boton) {
+  boton.disabled = true;
+  try { await api("POST", { id, accion }); await cargar(); } catch (e) { $("err").textContent = e.message; boton.disabled = false; }
+}
+$("login").onsubmit = (e) => { e.preventDefault(); clave = $("clave").value; try { sessionStorage.setItem("arcana-admin", clave); } catch {} cargar(); };
+$("filtro").onchange = pintar; $("buscar").oninput = pintar; $("recargar").onclick = cargar;
+if (clave) cargar();
+</script>
+</body>
+</html>
