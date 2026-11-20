@@ -46,7 +46,9 @@ export default async function handler(req, res) {
   const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "anon";
   if (!permitir(ip)) return res.status(429).json({ error: "Llegaste al límite de consultas de hoy. Vuelve mañana o agenda una sesión con Diana." });
 
-  const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+  let body;
+  try { body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {}; }
+  catch { return res.status(400).json({ error: "La conversación no es válida." }); }
   const mensajes = limpiarHistorial(body.messages);
   if (!mensajes) return res.status(400).json({ error: "La conversación no es válida." });
 
@@ -142,7 +144,7 @@ export default async function handler(req, res) {
       console.error("Anthropic", error.status, error.message);
       return res.status(502).json({ error: "Arcana no pudo responder ahora. Intenta de nuevo en un momento." });
     }
-    console.error(error);
+    console.error("Error inesperado", error);
     return res.status(500).json({ error: "Algo salió mal. Intenta de nuevo." });
   }
 }

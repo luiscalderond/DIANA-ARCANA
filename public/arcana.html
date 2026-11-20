@@ -190,7 +190,7 @@ async function send() {
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");
-    if (!r.ok) { bubble.textContent = j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje."; historial.pop(); return; }
+    if (!r.ok) { bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
     if (j.cartas) { bubble.remove(); mostrarCartas(j.cartas); log.appendChild(bubble); }
     bubble.textContent = j.text;
     // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
