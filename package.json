@@ -1,0 +1,15 @@
+{
+  "name": "diana-arcana",
+  "version": "1.0.0",
+  "description": "Web de Diana Arcana con Arcana, lectora de tarot y carta astral",
+  "scripts": {},
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
+    "astronomy-engine": "^2.1.19"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  }
+}

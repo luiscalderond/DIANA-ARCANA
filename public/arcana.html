@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Arcana · Diana Arcana</title>
+<meta name="description" content="Conversa con Arcana, la asistente virtual de Diana: tarot, carta astral, rituales y registros akáshicos.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Cinzel:wght@500&family=Karla:wght@400;500;700&display=swap">
+<style>
+:root{
+  --night:#16121f; --cloth:#211a2e; --veil:#2e2540; --candle:#d9b46a; --ink:#efe8f5; --mist:#b5aac4; --rose:#c98a9a;
+  --display:"Cormorant Garamond", Georgia, serif; --label:"Cinzel", Georgia, serif; --body:"Karla", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.app{height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;align-items:center;gap:12px;padding-block:14px;border-bottom:1px solid var(--veil);flex-wrap:wrap}
+.back{color:var(--mist);text-decoration:none;font-size:22px;padding-right:4px}
+.avatar{width:44px;height:44px;border-radius:50%;border:1px solid var(--candle);display:grid;place-items:center;font-family:var(--label);color:var(--candle);font-size:18px;flex:none}
+.who{flex:1;min-width:0}
+.who b{font-family:var(--display);font-size:24px;font-weight:600;display:block;line-height:1.1}
+.who small{color:var(--mist);font-size:13px}
+textarea,button{font:inherit}
+.log{flex:1;overflow-y:auto;padding-block:20px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.msg{max-width:88%;padding:12px 16px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.a{background:var(--cloth);border:1px solid var(--veil);border-top-left-radius:4px;align-self:flex-start}
+.msg.u{background:var(--veil);border-top-right-radius:4px;align-self:flex-end}
+.msg img{display:block;max-width:220px;max-height:220px;border-radius:10px;margin-top:8px}
+.msg .tools{display:flex;gap:8px;margin-top:8px}
+.msg.thinking{color:var(--mist);font-style:italic}
+.linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
+.spread{align-self:stretch;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0}
+.card{width:96px;aspect-ratio:7/12;border:1px solid var(--candle);border-radius:10px;background:var(--cloth);padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center}
+.card .pos{font-size:10.5px;color:var(--mist);line-height:1.2}
+.card .name{font-family:var(--display);font-size:16px;font-weight:600;line-height:1.1}
+.card .star{color:var(--candle);font-size:20px}
+.card.inv .star{transform:rotate(180deg)}
+.card .inv-tag{font-size:10.5px;color:var(--rose);min-height:1.2em}
+@media (prefers-reduced-motion:no-preference){.card{animation:flip .6s ease both}@keyframes flip{from{transform:rotateY(90deg);opacity:0}to{transform:none;opacity:1}}}
+.welcome{margin:auto 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;padding-block:24px}
+.welcome h1{font-family:var(--display);font-weight:600;font-size:clamp(34px,7vw,52px);margin:0;line-height:1.1;text-wrap:balance}
+.welcome p{color:var(--mist);max-width:46ch;margin:0}
+.eyebrow{font-family:var(--label);letter-spacing:.18em;font-size:12px;color:var(--candle);text-transform:uppercase}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:999px;border:1px solid var(--candle);background:var(--candle);color:var(--night);font-weight:700;cursor:pointer}
+.bar{border-top:1px solid var(--veil);padding-block:12px;display:flex;flex-direction:column;gap:8px}
+.preview{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mist)}
+.preview img{height:48px;border-radius:6px}
+.row{display:flex;gap:8px;align-items:flex-end}
+textarea{flex:1;min-width:0;resize:none;background:var(--cloth);color:var(--ink);border:1px solid var(--veil);border-radius:20px;padding:11px 16px;min-height:46px;max-height:140px;font-size:16px}
+.icon{width:46px;height:46px;border-radius:50%;border:1px solid var(--candle);background:transparent;color:var(--candle);display:grid;place-items:center;cursor:pointer;flex:none;font-size:19px}
+.icon.send{background:var(--candle);color:var(--night)}
+.icon.on{background:var(--rose);border-color:var(--rose);color:var(--night)}
+.icon:disabled{opacity:.4;cursor:default}
+button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
+.foot{font-size:12px;color:var(--mist);text-align:center}
+@media (prefers-reduced-motion:no-preference){.msg.thinking{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{opacity:.5}}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <a class="back" href="/" aria-label="Volver a la página de inicio">‹</a>
+    <div class="avatar" aria-hidden="true">A</div>
+    <div class="who"><b>Arcana</b><small>Asistente virtual de Diana</small></div>
+    <button class="linkbtn" id="mute" type="button">🔊 Voz activada</button>
+  </header>
+
+  <div class="log" id="log" aria-live="polite">
+    <div class="welcome" id="welcome">
+      <span class="eyebrow">Diana Arcana</span>
+      <h1>Tu lectura empieza con una pregunta</h1>
+      <p>Arcana te guía para barajar tu mazo y lee tus cartas con una foto. Si no tienes cartas, ella hace la tirada por ti. También calcula tu carta astral, prepara rituales y lee registros akáshicos.</p>
+      <button class="btn" id="start" type="button">Comenzar consulta</button>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="preview" id="preview" hidden><img id="previewImg" alt="Foto de la tirada"><span>Foto lista para enviar</span><button class="linkbtn" id="clearPhoto" type="button">Quitar</button></div>
+    <div class="row">
+      <button class="icon" id="photoBtn" type="button" aria-label="Tomar o subir foto de las cartas" title="Foto de las cartas">📷</button>
+      <input type="file" id="photo" accept="image/jpeg,image/png,image/webp,image/heic,image/*" capture="environment" hidden>
+      <textarea id="box" rows="1" placeholder="Escribe o toca el micrófono para hablar" aria-label="Tu mensaje"></textarea>
+      <button class="icon" id="mic" type="button" aria-label="Hablar" title="Hablar" hidden>🎙</button>
+      <button class="icon send" id="send" type="button" aria-label="Enviar">➤</button>
+    </div>
+    <div class="foot">Arcana es una inteligencia artificial. Sus lecturas son una guía de autoconocimiento y no reemplazan consejo médico, legal ni financiero. Solo para mayores de 18 años.</div>
+  </div>
+</div>
+
+<script>
+const SALUDO = "Hola, soy Arcana, la asistente virtual de Diana. Estoy aquí para acompañarte en tu lectura. ¿Cómo te llamas y qué te gustaría consultar hoy?";
+const $ = (id) => document.getElementById(id);
+const log = $("log"), box = $("box"), sendBtn = $("send"), micBtn = $("mic"), photoBtn = $("photoBtn"), photo = $("photo");
+const historial = [];   // {role, content} que se envía al servidor (sin el saludo)
+let busy = false, started = false, voiceOn = true, pendingImage = null;
+
+/* ---------- Voz de Arcana (síntesis del navegador, gratis) ---------- */
+const synth = window.speechSynthesis;
+let voz = null;
+function elegirVoz() {
+  if (!synth) return;
+  const vs = synth.getVoices().filter((v) => v.lang && v.lang.toLowerCase().startsWith("es"));
+  const fem = /(paulina|monica|mónica|helena|sabina|elvira|dalia|paloma|lupe|francisca|google español|female|mujer|marisol|laura|camila)/i;
+  const latam = (v) => /es-(mx|us|419|ec|co|ar|cl|pe)/i.test(v.lang);
+  voz = vs.find((v) => fem.test(v.name) && latam(v)) || vs.find((v) => latam(v)) || vs.find((v) => fem.test(v.name)) || vs[0] || null;
+}
+if (synth) { elegirVoz(); synth.onvoiceschanged = elegirVoz; }
+function hablar(texto, forzar) {
+  if (!synth || (!voiceOn && !forzar)) return;
+  synth.cancel();
+  for (const parte of texto.split(/\n+|(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean)) {
+    const u = new SpeechSynthesisUtterance(parte);
+    u.lang = voz ? voz.lang : "es-419";
+    if (voz) u.voice = voz;
+    u.rate = 0.95; u.pitch = 1.0;
+    synth.speak(u);
+  }
+}
+function callar() { if (synth) synth.cancel(); }
+
+/* ---------- Mensajes ---------- */
+function addMsg(role, text, imgUrl) {
+  const w = $("welcome"); if (w) w.remove();
+  const d = document.createElement("div");
+  d.className = "msg " + role;
+  d.textContent = text;
+  if (imgUrl) { const i = document.createElement("img"); i.src = imgUrl; i.alt = "Foto de la tirada"; d.appendChild(i); }
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+  return d;
+}
+function addReplay(d, text) {
+  if (!synth) return;
+  const t = document.createElement("div"); t.className = "tools";
+  const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn"; b.textContent = "▶ Escuchar";
+  b.onclick = () => hablar(text, true);
+  t.appendChild(b); d.appendChild(t);
+}
+function mostrarCartas(cartas) {
+  const s = document.createElement("div"); s.className = "spread"; s.setAttribute("aria-label", "Cartas de tu tirada");
+  cartas.forEach((c, i) => {
+    const k = document.createElement("div"); k.className = "card" + (c.invertida ? " inv" : "");
+    k.style.animationDelay = (i * 0.15) + "s";
+    const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = c.posicion;
+    const star = document.createElement("span"); star.className = "star"; star.textContent = "✦";
+    const name = document.createElement("span"); name.className = "name"; name.textContent = c.carta;
+    const inv = document.createElement("span"); inv.className = "inv-tag"; inv.textContent = c.invertida ? "invertida" : "";
+    k.append(pos, star, name, inv); s.appendChild(k);
+  });
+  log.appendChild(s); log.scrollTop = log.scrollHeight;
+}
+
+function begin(conVoz) {
+  if (started) return;
+  started = true;
+  const d = addMsg("a", SALUDO); addReplay(d, SALUDO);
+  if (conVoz) hablar(SALUDO);
+}
+
+/* ---------- Foto: se reduce en el celular antes de enviarla ---------- */
+async function reducirImagen(file) {
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = url; });
+  const max = 1568, k = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const dataUrl = c.toDataURL("image/jpeg", 0.85);
+  return { url, media_type: "image/jpeg", data: dataUrl.split(",")[1] };
+}
+
+/* ---------- Enviar ---------- */
+async function send() {
+  if (busy) return;
+  const text = box.value.trim();
+  if (!text && !pendingImage) return;
+  if (!started) begin(false);
+  callar();
+  const img = pendingImage;
+  addMsg("u", text || "Aquí está la foto de mi tirada.", img && img.url);
+  historial.push({ role: "user", content: text || "Aquí está la foto de mi tirada." });
+  box.value = ""; autosize(); clearPhoto();
+  busy = true; sendBtn.disabled = true;
+  const bubble = addMsg("a thinking", img ? "Arcana está mirando tus cartas…" : "Arcana está pensando…");
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
+    });
+    const j = await r.json().catch(() => ({}));
+    bubble.classList.remove("thinking");
+    if (!r.ok) { bubble.textContent = j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje."; historial.pop(); return; }
+    if (j.cartas) { bubble.remove(); mostrarCartas(j.cartas); log.appendChild(bubble); }
+    bubble.textContent = j.text;
+    // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
+    historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
+    addReplay(bubble, j.text);
+    hablar(j.text);
+  } catch (e) {
+    bubble.classList.remove("thinking");
+    bubble.textContent = "No hay conexión. Revisa tu internet y vuelve a enviar tu mensaje.";
+    historial.pop();
+  } finally { busy = false; sendBtn.disabled = false; }
+}
+
+function autosize() { box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 140) + "px"; }
+function clearPhoto() { pendingImage = null; photo.value = ""; $("preview").hidden = true; }
+
+$("start").onclick = () => { begin(true); box.focus(); };
+sendBtn.onclick = send;
+box.addEventListener("input", autosize);
+box.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+photoBtn.onclick = () => photo.click();
+photo.onchange = async () => {
+  const f = photo.files && photo.files[0]; if (!f) return;
+  try { pendingImage = await reducirImagen(f); $("previewImg").src = pendingImage.url; $("preview").hidden = false; box.focus(); }
+  catch { addMsg("a", "No pude abrir esa foto. Prueba con otra en formato JPG o PNG."); }
+};
+$("clearPhoto").onclick = clearPhoto;
+$("mute").onclick = () => { voiceOn = !voiceOn; $("mute").textContent = voiceOn ? "🔊 Voz activada" : "🔇 Voz apagada"; if (!voiceOn) callar(); };
+if (!synth) $("mute").hidden = true;
+
+/* ---------- Micrófono (reconocimiento de voz del navegador) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  micBtn.hidden = false;
+  const rec = new SR();
+  rec.lang = "es-EC"; rec.interimResults = true; rec.continuous = false;
+  let base = "", escuchando = false;
+  rec.onresult = (e) => {
+    let fin = "", tmp = "";
+    for (const r of e.results) (r.isFinal ? (fin += r[0].transcript) : (tmp += r[0].transcript));
+    box.value = (base ? base + " " : "") + (fin || tmp); autosize();
+  };
+  rec.onstart = () => { escuchando = true; micBtn.classList.add("on"); micBtn.setAttribute("aria-label", "Dejar de escuchar"); };
+  rec.onend = () => {
+    escuchando = false; micBtn.classList.remove("on"); micBtn.setAttribute("aria-label", "Hablar");
+    if (box.value.trim() && box.value.trim() !== base) send();
+  };
+  rec.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") { micBtn.hidden = true; addMsg("a", "No tengo permiso para usar tu micrófono. Puedes escribirme sin problema."); } };
+  micBtn.onclick = () => {
+    if (escuchando) { rec.stop(); return; }
+    callar(); if (!started) begin(false);
+    base = box.value.trim();
+    try { rec.start(); } catch {}
+  };
+}
+</script>
+</body>
+</html>
