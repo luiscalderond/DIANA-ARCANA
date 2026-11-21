@@ -89,12 +89,68 @@ def procesar(nombre):
     ga = np.asarray(glow).astype(np.float32) / 255
     bl = np.clip((ga.mean(-1, keepdims=True) - 0.6) * 2.5, 0, 1) * np.array([1.0, 0.82, 0.5])
     a = 1 - (1 - a) * (1 - bl * 0.22)
+    # 5b) Luz propia de los símbolos dorados (estrellas, soles, oros, copas, coronas): halo que ilumina lo que los rodea.
+    # Solo brillan los símbolos compactos (no tocan el borde y no son pisos o telas grandes).
+    sm = np.asarray(Image.fromarray((mS[..., 0] > 0.5).astype(np.uint8) * 255).resize((W // ESC, H // ESC), Image.NEAREST)) > 127
+    hh, ww = sm.shape; vis = np.zeros(sm.shape, bool); keep = np.zeros(sm.shape, bool)
+    from collections import deque
+    for y0 in range(hh):
+        for x0 in range(ww):
+            if sm[y0, x0] and not vis[y0, x0]:
+                q = deque([(y0, x0)]); vis[y0, x0] = True; pts = []
+                while q:
+                    y, x = q.popleft(); pts.append((y, x))
+                    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        y2, x2 = y + dy, x + dx
+                        if 0 <= y2 < hh and 0 <= x2 < ww and sm[y2, x2] and not vis[y2, x2]: vis[y2, x2] = True; q.append((y2, x2))
+                ys = [p_[0] for p_ in pts]; xs = [p_[1] for p_ in pts]; area = len(pts) / (hh * ww)
+                alto, ancho = max(ys) - min(ys) + 1, max(xs) - min(xs) + 1
+                compacto = len(pts) / (alto * ancho) > 0.35
+                if 0.0006 < area < 0.09 and min(xs) > 0.05 * ww and max(xs) < 0.95 * ww and max(ys) < 0.9 * hh and compacto:
+                    for y, x in pts: keep[y, x] = True
+    simb = Image.fromarray((keep * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)
+    h1 = np.asarray(simb.filter(ImageFilter.GaussianBlur(16))).astype(np.float32)[..., None] / 255
+    h2 = np.asarray(simb.filter(ImageFilter.GaussianBlur(5))).astype(np.float32)[..., None] / 255
+    halo = np.clip(h1 * 1.5, 0, 1) * np.array([1.0, 0.78, 0.38]) * 0.42 + np.clip(h2 * 1.1, 0, 1) * np.array([1.0, 0.92, 0.7]) * 0.22
+    kp = np.asarray(simb).astype(np.float32)[..., None] / 255
+    a = 1 - (1 - a) * (1 - halo * (1 - kp * 0.8))
+    # 5c) Capas de descubrimiento en los cielos: estrellas tenues, una constelación y nebulosa (solo donde hay cielo).
+    cielo_m = np.clip(mA + mC, 0, 1)
+    if cielo_m.mean() > 0.04:
+        rng = np.random.default_rng(sum(map(ord, nombre)))
+        neb = rng.random((H // 16, W // 16)).astype(np.float32)
+        neb = np.asarray(Image.fromarray((neb * 255).astype(np.uint8)).resize((W, H), Image.BICUBIC).filter(ImageFilter.GaussianBlur(18))).astype(np.float32)[..., None] / 255
+        colneb = np.where(rng.random() > 0.5, np.array([0.55, 0.35, 0.85]), np.array([0.25, 0.55, 0.85]))
+        a = a + cielo_m * np.clip(neb - 0.45, 0, 1) * 0.55 * colneb
+        capa = Image.new("L", (W, H), 0); dc = ImageDraw.Draw(capa)
+        ys_, xs_ = np.nonzero(cielo_m[..., 0] > 0.6)
+        if len(ys_):
+            for _ in range(70):
+                k = rng.integers(len(ys_)); r = rng.choice([0.8, 1.1, 1.5, 2.2], p=[0.45, 0.3, 0.17, 0.08]) * ESC / 2
+                dc.ellipse([xs_[k] - r, ys_[k] - r, xs_[k] + r, ys_[k] + r], fill=int(rng.integers(110, 255)))
+            k0 = rng.integers(len(ys_)); cx0, cy0 = xs_[k0], ys_[k0]; pts = [(cx0, cy0)]
+            for _ in range(int(rng.integers(4, 7))):
+                ang = rng.random() * 6.28; ln = rng.integers(20, 45) * ESC / 2
+                nx, ny = pts[-1][0] + ln * math.cos(ang), pts[-1][1] + ln * math.sin(ang)
+                if 0 < ny < H and 0 < nx < W and cielo_m[int(ny), int(nx), 0] > 0.5: pts.append((nx, ny))
+            if len(pts) > 2:
+                dc.line(pts, fill=70, width=1)
+                for q in pts: dc.ellipse([q[0] - 2.2, q[1] - 2.2, q[0] + 2.2, q[1] + 2.2], fill=230)
+        st = np.asarray(capa.filter(ImageFilter.GaussianBlur(0.6))).astype(np.float32)[..., None] / 255
+        a = 1 - (1 - a) * (1 - st * cielo_m * np.array([1.0, 0.95, 0.85]))
     out = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8))
 
     # 6) Marco dorado con micro-detalles: fases lunares arriba, constelación abajo, estrellas en esquinas.
     d = ImageDraw.Draw(out)
     oro, oro2 = (226, 189, 112), (255, 236, 184)
-    d.rectangle([6, 6, W - 7, H - 7], outline=oro, width=3)
+    # filete exterior con degradado metálico (luz arriba a la izquierda, sombra al centro, reflejo abajo)
+    gx, gy = np.meshgrid(np.linspace(0, 1, W), np.linspace(0, 1, H))
+    tt = (gx * 0.4 + gy * 0.6)
+    met = np.stack([np.interp(tt, [0, .3, .55, .8, 1], c) for c in ([255, 214, 150, 230, 255], [244, 172, 108, 190, 236], [196, 92, 46, 120, 184])], -1)
+    band = Image.new("L", (W, H), 0); bdm = ImageDraw.Draw(band)
+    bdm.rectangle([3, 3, W - 4, H - 4], outline=255, width=6)
+    out = Image.composite(Image.fromarray(met.astype(np.uint8)), out, band)
+    d = ImageDraw.Draw(out)
     d.rectangle([13, 13, W - 14, H - 14], outline=(170, 130, 60), width=1)
     def estrella(cx, cy, r, col):
         pts = []
@@ -115,7 +171,7 @@ def procesar(nombre):
     for p in pts: d.ellipse([p[0] - 1.8, p[1] - 1.8, p[0] + 1.8, p[1] + 1.8], fill=oro2)
     # 7) Título en español: banda índigo con letras doradas sobre el título original en inglés (mayores y figuras).
     num = int(nombre[1:])
-    if nombre[0] == "m" or num >= 11 or num == 1:
+    if True:  # todas las cartas llevan cartucho (en los menores numerados cubre el borde inferior del dibujo)
         from PIL import ImageFont
         import json
         nom = json.load(open(os.path.join(os.path.dirname(__file__), "nombres-rider-waite.json")))[nombre].upper()
