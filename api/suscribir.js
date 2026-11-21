@@ -2,7 +2,7 @@
 import { randomInt } from "node:crypto";
 import * as db from "../lib/db.js";
 import { idValido, leerCuerpo, datosDeposito, PLANES } from "../lib/acceso.js";
-import { cuentaDeToken, tokenDe, claveDeCuenta } from "../lib/cuentas.js";
+import { cuentaDeToken, tokenDe, claveDeCuenta, emailReal } from "../lib/cuentas.js";
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 
@@ -14,13 +14,13 @@ export default async function handler(req, res) {
 
   // Con cuenta, el plan queda en la cuenta y los datos ya los tenemos.
   const cuenta = await cuentaDeToken(tokenDe(req)).catch(() => null);
-  if (cuenta) { b.dispositivo = claveDeCuenta(cuenta.id); b.nombre = b.nombre || cuenta.nombre; b.telefono = b.telefono || cuenta.telefono; b.email = b.email || cuenta.email; b.acepto = true; }
+  if (cuenta) { b.dispositivo = claveDeCuenta(cuenta.id); b.nombre = b.nombre || cuenta.nombre; b.telefono = b.telefono || cuenta.telefono; b.email = b.email || emailReal(cuenta.email) || "-"; b.acepto = true; }
   const nombre = String(b.nombre || "").trim().slice(0, 120);
   const telefono = String(b.telefono || "").replace(/[^\d+]/g, "").slice(0, 20);
   const email = String(b.email || "").trim().toLowerCase().slice(0, 200);
   if (nombre.length < 2) return res.status(400).json({ error: "Escribe tu nombre completo." });
   if (telefono.replace(/\D/g, "").length < 9) return res.status(400).json({ error: "Escribe un teléfono válido, por ejemplo 0991234567." });
-  if (!EMAIL.test(email)) return res.status(400).json({ error: "Escribe un email válido." });
+  if (!cuenta && !EMAIL.test(email)) return res.status(400).json({ error: "Escribe un email válido." });
   if (b.acepto !== true) return res.status(400).json({ error: "Necesitamos tu autorización para usar tus datos." });
   if (!idValido(b.dispositivo)) return res.status(400).json({ error: "Recarga la página e intenta de nuevo." });
 

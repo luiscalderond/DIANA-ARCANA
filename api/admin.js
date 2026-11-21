@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       catch (e) { return res.status(200).json({ opiniones: [], aviso: "Falta crear la tabla de opiniones en Supabase (supabase/esquema.sql)." }); }
     }
     if (req.method === "GET" && /[?&]ver=cuentas/.test(req.url || "")) {
-      try { return res.status(200).json({ cuentas: (await cu.listarCuentas()).map((c) => ({ ...c, clave: cu.claveDeCuenta(c.id) })) }); }
+      try { return res.status(200).json({ cuentas: (await cu.listarCuentas()).map((c) => ({ ...c, email: cu.emailReal(c.email), clave: cu.claveDeCuenta(c.id) })) }); }
       catch (e) { return res.status(200).json({ cuentas: [], aviso: "Falta crear las tablas de cuentas en Supabase (cuentas.sql)." }); }
     }
     if (req.method === "GET") return res.status(200).json({ suscriptoras: await db.listarSuscriptoras() });
@@ -42,10 +42,10 @@ export default async function handler(req, res) {
     // Cambiar la contraseña de una clienta que la olvidó (se le cierran las sesiones abiertas).
     if (b.accion === "clave") {
       const clave = String(b.clave || "");
-      if (clave.length < 6) return res.status(400).json({ error: "La contraseña nueva debe tener al menos 6 caracteres." });
+      if (!/^\d{4}$/.test(clave) && clave.length < 6) return res.status(400).json({ error: "El PIN nuevo debe tener 4 números." });
       if (!/^[0-9a-f-]{36}$/i.test(String(b.cuentaId || ""))) return res.status(400).json({ error: "Cuenta no válida." });
       await cu.cambiarClave(b.cuentaId, clave);
-      return res.status(200).json({ ok: true, aviso: "Listo. Envíale la contraseña nueva por WhatsApp; puede cambiarla luego con «¿Olvidaste tu contraseña?»." });
+      return res.status(200).json({ ok: true, aviso: "Listo, cuenta desbloqueada. Envíale el PIN nuevo por WhatsApp." });
     }
     if (b.accion === "probar") {
       // Modo prueba para la cuenta con la que Diana entró en el chat de este teléfono.
@@ -54,10 +54,10 @@ export default async function handler(req, res) {
       if (!suya && !b.dispositivo) return res.status(400).json({ error: "Abre primero el chat de Arcana en este teléfono, entra con tu cuenta y vuelve aquí." });
       if (!/^[A-Za-z0-9-]{8,64}$/.test(dispositivo)) return res.status(400).json({ error: "Abre primero el chat de Arcana en este teléfono, entra con tu cuenta y vuelve aquí." });
       const ya = (await db.suscripcionesActivasDe(dispositivo)).find((x) => String(x.referencia).startsWith("DP-"));
-      if (ya) return res.status(200).json({ ok: true, aviso: suya ? `La cuenta ${suya.email} ya está en modo prueba.` : "Este teléfono ya está en modo prueba." });
+      if (ya) return res.status(200).json({ ok: true, aviso: suya ? `La cuenta de ${suya.nombre} ya está en modo prueba.` : "Este teléfono ya está en modo prueba." });
       const nueva = await db.crearSolicitud({ nombre: "Diana (pruebas)", telefono: "-", email: "-", dispositivo, referencia: "DP-" + dispositivo.slice(0, 6).toUpperCase() });
       await db.actualizarSuscriptora(nueva.id, { estado: "activa", activa_hasta: new Date(Date.now() + 365 * 864e5).toISOString() });
-      return res.status(200).json({ ok: true, aviso: suya ? `Listo: tu cuenta ${suya.email} quedó en modo prueba por un año, con tiradas sin límite, en cualquier equipo.` : "Listo: este teléfono quedó en modo prueba por un año, con tiradas sin límite." });
+      return res.status(200).json({ ok: true, aviso: suya ? `Listo: la cuenta de ${suya.nombre} quedó en modo prueba por un año, con tiradas sin límite, en cualquier equipo.` : "Listo: este teléfono quedó en modo prueba por un año, con tiradas sin límite." });
     }
     const s = await db.obtenerSuscriptora(String(b.id || ""));
     if (!s) return res.status(404).json({ error: "No existe esa suscriptora." });

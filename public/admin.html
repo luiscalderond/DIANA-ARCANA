@@ -49,7 +49,7 @@ a{color:var(--candle)}
     <div id="lista" style="display:grid;gap:10px"></div>
     <h1 style="margin-top:28px">Cuentas de clientas</h1>
     <p id="ctResumen" style="margin:6px 0 12px"></p>
-    <input id="ctBuscar" placeholder="Buscar nombre, email o teléfono" style="margin-bottom:10px;width:100%">
+    <input id="ctBuscar" placeholder="Buscar nombre o WhatsApp" style="margin-bottom:10px;width:100%">
     <div id="ctLista" style="display:grid;gap:10px"></div>
     <h1 style="margin-top:28px">Conversaciones</h1>
     <p id="cvResumen" style="margin:6px 0 12px"></p>
@@ -129,14 +129,14 @@ function pintarCuentas() {
   $("ctResumen").textContent = cuentas.length ? `${cuentas.length} cuentas · ${semana} entraron esta semana.` : "Todavía no hay cuentas.";
   $("ctLista").replaceChildren(...filas.map((c) => {
     const d = document.createElement("div"); d.className = "card";
-    const b = document.createElement("b"); b.textContent = c.nombre;
+    const b = document.createElement("b"); b.textContent = c.nombre + ((c.recuperar_intentos || 0) >= 10 ? " · 🔒 bloqueada (ponle un PIN nuevo)" : "");
     const dt = c.datos || {}, lec = (dt.lecturas || []).length;
     const info = document.createElement("p");
-    info.textContent = `${c.email} · ${c.telefono || "-"} · ${dt.fecha ? "nació el " + dt.fecha + " en " + dt.ciudad + " · " : ""}${lec} lecturas · creada el ${fecha(c.creada)}${c.ultimo_ingreso ? " · último ingreso " + fecha(c.ultimo_ingreso) : ""}`;
+    info.textContent = `${c.telefono || "-"}${c.email ? " · " + c.email : ""} · ${dt.fecha ? "nació el " + dt.fecha + " en " + dt.ciudad + " · " : ""}${lec} lecturas · creada el ${fecha(c.creada)}${c.ultimo_ingreso ? " · último ingreso " + fecha(c.ultimo_ingreso) : ""}`;
     const acc = document.createElement("div"); acc.className = "fila";
-    const cambiar = document.createElement("button"); cambiar.className = "sec"; cambiar.textContent = "Cambiar contraseña";
+    const cambiar = document.createElement("button"); cambiar.className = "sec"; cambiar.textContent = "Nuevo PIN";
     cambiar.onclick = () => {
-      const i = document.createElement("input"); i.placeholder = "Contraseña nueva (6 o más)"; i.autocomplete = "off";
+      const i = document.createElement("input"); i.placeholder = "PIN de 4 números"; i.inputMode = "numeric"; i.maxLength = 4; i.autocomplete = "off";
       const g = document.createElement("button"); g.textContent = "Guardar";
       g.onclick = async () => { g.disabled = true; try { const j = await api("POST", { accion: "clave", cuentaId: c.id, clave: i.value }); $("err").style.color = "var(--ok)"; $("err").textContent = "✓ " + c.nombre + ": " + j.aviso; acc.replaceChildren(cambiar, w); } catch (e) { $("err").style.color = ""; $("err").textContent = e.message; g.disabled = false; } };
       acc.replaceChildren(i, g, w); i.focus();

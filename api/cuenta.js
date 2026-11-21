@@ -10,7 +10,8 @@ const fallos = new Map(); // intentos fallidos por conexión y hora (aproximado:
 const MAX_CUENTAS_POR_EQUIPO = Number(process.env.MAX_CUENTAS_POR_EQUIPO || 3);
 const limpio = (x, n) => String(x || "").replace(/[\[\]{}<>\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
 
-export const publica = (c) => ({ id: c.id, clave: cu.claveDeCuenta(c.id), nombre: c.nombre, email: c.email, telefono: c.telefono, datos: c.datos || {}, saludo: saludoCuenta(c) });
+const whatsappDiana = () => (process.env.WHATSAPP_DIANA || "").replace(/\D/g, "");
+export const publica = (c) => ({ id: c.id, clave: cu.claveDeCuenta(c.id), nombre: c.nombre, email: cu.emailReal(c.email), telefono: c.telefono, datos: c.datos || {}, saludo: saludoCuenta(c) });
 
 // Quien ya tenía un plan en este equipo antes de las cuentas lo conserva al entrar.
 async function vincularPlanAnterior(legado, cuenta) {
@@ -39,31 +40,35 @@ export default async function handler(req, res) {
 
     if (b.accion === "registrar" || b.accion === "ingresar") {
       if ((fallos.get(k) || 0) >= 15) return res.status(429).json({ error: "Demasiados intentos. Espera un rato e intenta de nuevo." });
-      const email = String(b.email || "").trim().toLowerCase().slice(0, 200);
-      const clave = String(b.clave || "");
-      if (!cu.EMAIL.test(email)) return res.status(400).json({ error: "Escribe un email válido." });
+      // Se entra con el WhatsApp y un PIN de 4 números. (Las cuentas creadas antes con email siguen entrando con su email.)
+      const dato = String(b.telefono || b.email || "").trim().toLowerCase().slice(0, 200);
+      const tel = cu.normalizarTelefono(dato);
+      const email = dato.includes("@") ? dato : tel ? cu.emailDeTelefono(tel) : "";
+      const clave = String(b.clave || "").trim();
+      if (!email) return res.status(400).json({ error: "Escribe tu WhatsApp, por ejemplo 0991234567." });
       if (b.accion === "ingresar") {
-        const c = await cu.verificarIngreso(email, clave);
-        if (!c) { fallos.set(k, (fallos.get(k) || 0) + 1); if (fallos.size > 5000) fallos.clear(); return res.status(401).json({ error: "El email o la contraseña no coinciden." }); }
-        await vincularPlanAnterior(String(b.legado || ""), c).catch(() => {});
-        return res.status(200).json({ token: await cu.abrirSesion(c.id), cuenta: publica(c) });
+        const r = await cu.verificarIngreso(email, clave);
+        if (r && r.bloqueada) return res.status(423).json({ error: "Por seguridad bloqueamos esta cuenta tras varios intentos. Escríbele a Diana por WhatsApp y te da un PIN nuevo.", whatsapp: whatsappDiana() });
+        if (!r) { fallos.set(k, (fallos.get(k) || 0) + 1); if (fallos.size > 5000) fallos.clear(); return res.status(401).json({ error: "El WhatsApp o el PIN no coinciden." }); }
+        await vincularPlanAnterior(String(b.legado || ""), r).catch(() => {});
+        return res.status(200).json({ token: await cu.abrirSesion(r.id), cuenta: publica(r) });
       }
-      // Crear cuenta
-      const nombre = limpio(b.nombre, 120), telefono = String(b.telefono || "").replace(/[^\d+]/g, "").slice(0, 20);
+      // Crear cuenta: nombre, WhatsApp y PIN.
+      const nombre = limpio(b.nombre, 120);
       const fecha = limpio(b.fecha, 20), ciudad = limpio(b.ciudad, 60);
-      if (nombre.length < 3 || !nombre.includes(" ")) return res.status(400).json({ error: "Escribe tus nombres y apellidos." });
-      if (telefono.replace(/\D/g, "").length < 9) return res.status(400).json({ error: "Escribe un WhatsApp válido, por ejemplo 0991234567." });
-      if (clave.length < 6) return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
-      // La fecha y la ciudad de nacimiento son opcionales aquí: Arcana las pregunta en la conversación.
+      if (nombre.length < 3 || !nombre.includes(" ")) return res.status(400).json({ error: "Escribe tu nombre y apellido." });
+      if (!tel) return res.status(400).json({ error: "Escribe un WhatsApp válido, por ejemplo 0991234567." });
+      if (!/^\d{4}$/.test(clave)) return res.status(400).json({ error: "Tu PIN debe tener 4 números." });
       if (fecha && !buscarFecha(fecha)) return res.status(400).json({ error: "Escribe tu fecha de nacimiento, por ejemplo 03/03/1990." });
       if (b.acepto !== true) return res.status(400).json({ error: "Necesitamos tu autorización para guardar tus datos." });
-      if (await cu.buscarCuentaPorEmail(email)) return res.status(409).json({ error: "Ya existe una cuenta con ese email. Toca «Ya tengo cuenta» para entrar." });
+      if (await cu.buscarCuentaPorEmail(email)) return res.status(409).json({ error: "Ese WhatsApp ya tiene cuenta. Toca «Ya tengo cuenta» y entra con tu PIN." });
       const legado = idValido(b.legado) ? String(b.legado) : null;
       if (legado && (await cu.contarCuentasDeEquipo(legado)) >= MAX_CUENTAS_POR_EQUIPO) return res.status(429).json({ error: "Desde este equipo ya se crearon varias cuentas. Entra con una de ellas." });
-      const c = await cu.crearCuenta({ nombre, email, telefono, clave, datos: { ...(fecha && ciudad.length >= 2 ? { fecha, ciudad } : {}), otros: [], lecturas: [] }, dispositivo: legado });
+      const c = await cu.crearCuenta({ nombre, email, telefono: tel, clave, datos: { ...(fecha && ciudad.length >= 2 ? { fecha, ciudad } : {}), otros: [], lecturas: [] }, dispositivo: legado });
       await vincularPlanAnterior(legado || "", c).catch(() => {});
       return res.status(200).json({ token: await cu.abrirSesion(c.id), cuenta: publica(c) });
     }
+    if (b.accion === "ayuda") return res.status(200).json({ whatsapp: whatsappDiana() });
 
     // Olvidé mi contraseña: enviar el código y luego cambiarla con él.
     if (b.accion === "recuperar" || b.accion === "restablecer") {

@@ -452,11 +452,12 @@ async function cerrarSesion() {
   reiniciarChat(); begin(false);
 }
 const campo = (texto, attrs) => el("label", {}, texto, el("input", attrs));
-function campoClave(nombre, auto) {
-  const i = el("input", { type: "password", name: nombre, required: "", minlength: "6", autocomplete: auto });
+function campoPin(texto) {
+  const i = el("input", { type: "password", name: "clave", required: "", inputmode: "numeric", pattern: "[0-9]{4}", maxlength: "4", autocomplete: "off", title: "4 números" });
+  i.oninput = () => { i.value = i.value.replace(/\D/g, "").slice(0, 4); };
   const v = el("button", { type: "button", text: "Ver" });
   v.onclick = () => { i.type = i.type === "password" ? "text" : "password"; v.textContent = i.type === "password" ? "Ver" : "Ocultar"; };
-  return el("label", {}, "Contraseña", el("span", { class: "ver-clave" }, i, v));
+  return el("label", {}, texto, el("span", { class: "ver-clave" }, i, v));
 }
 async function pedirCuenta(datos) {
   const r = await fetch("/api/cuenta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ legado, ...datos }) }).catch(() => null);
@@ -475,7 +476,7 @@ function mostrarIngreso(alEntrar, modo) {
     });
     return t;
   };
-  function pintar(m) {
+  function pintar(m, valor) {
     const err = el("p", { class: "err", "aria-live": "polite" });
     const enviar = (f, texto, fn) => {
       const boton = el("button", { class: "btn", type: "submit", text: texto });
@@ -485,52 +486,36 @@ function mostrarIngreso(alEntrar, modo) {
     if (m === "crear") {
       const anterior = usuarios[0] || {}; // datos que ya dejó en este equipo antes de las cuentas
       const f = el("form", {},
-        campo("Tus nombres y apellidos", { type: "text", name: "nombre", required: "", autocomplete: "name", value: anterior.nombre || "" }),
-        campo("WhatsApp", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567" }),
-        campo("Email", { type: "email", name: "email", required: "", autocomplete: "email" }),
-        campoClave("clave", "new-password"),
+        campo("Tu nombre y apellido", { type: "text", name: "nombre", required: "", autocomplete: "name", value: anterior.nombre || "" }),
+        campo("Tu WhatsApp", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567" }),
+        campoPin("Crea un PIN de 4 números"),
         el("label", { class: "check" }, el("input", { type: "checkbox", name: "acepto", required: "", checked: "" }), "Acepto que Diana guarde mis datos y mis lecturas de forma privada."));
       enviar(f, "✦ Empezar mi consulta", async (fd) => {
-        const { r, j } = await pedirCuenta({ accion: "registrar", nombre: fd.get("nombre"), telefono: fd.get("telefono"), email: fd.get("email"), clave: fd.get("clave"), acepto: fd.get("acepto") === "on", fecha: anterior.fecha, ciudad: anterior.ciudad });
+        const { r, j } = await pedirCuenta({ accion: "registrar", nombre: fd.get("nombre"), telefono: fd.get("telefono"), clave: fd.get("clave"), acepto: fd.get("acepto") === "on", fecha: anterior.fecha, ciudad: anterior.ciudad });
         if (r && r.ok) return listo(j);
         err.textContent = j.error || "No hay conexión. Intenta de nuevo.";
-        if (r && r.status === 409) setTimeout(() => pintar("entrar"), 1800);
+        if (r && r.status === 409) setTimeout(() => pintar("entrar", fd.get("telefono")), 1800);
       });
-      card.replaceChildren(el("h2", { text: "Crea tu cuenta" }), el("p", { text: "Así tus lecturas y tus consultas te esperan en cualquier celular o computadora." }), pestanas("crear"), f);
+      card.replaceChildren(el("h2", { text: "Tu espacio con Arcana" }), el("p", { text: "Solo 3 datos, y tus lecturas te esperan en cualquier celular." }), pestanas("crear"), f);
     } else if (m === "entrar") {
-      const f = el("form", {}, campo("Email", { type: "email", name: "email", required: "", autocomplete: "email" }), campoClave("clave", "current-password"));
+      const f = el("form", {}, campo("Tu WhatsApp", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567", value: valor || "" }), campoPin("Tu PIN"));
       enviar(f, "Entrar", async (fd) => {
-        const { r, j } = await pedirCuenta({ accion: "ingresar", email: fd.get("email"), clave: fd.get("clave") });
+        const { r, j } = await pedirCuenta({ accion: "ingresar", telefono: fd.get("telefono"), clave: fd.get("clave") });
         if (r && r.ok) return listo(j);
         err.textContent = j.error || "No hay conexión. Intenta de nuevo.";
+        if (j.whatsapp) f.append(enlaceAyuda(j.whatsapp, fd.get("telefono")));
       });
-      const olvido = el("button", { class: "linkbtn", type: "button", text: "¿Olvidaste tu contraseña?" });
-      olvido.onclick = () => pintar("olvido");
+      const olvido = el("button", { class: "linkbtn", type: "button", text: "¿Olvidaste tu PIN?" });
+      olvido.onclick = async () => {
+        const { j } = await pedirCuenta({ accion: "ayuda" });
+        olvido.replaceWith(el("p", { text: "Escríbele a Diana y te da un PIN nuevo en un momento." }), enlaceAyuda(j.whatsapp || "", f.querySelector("input[name=telefono]").value));
+      };
       card.replaceChildren(el("h2", { text: "Qué bueno verte de nuevo" }), pestanas("entrar"), f, olvido);
-    } else if (m === "olvido") {
-      const f = el("form", {}, campo("El email de tu cuenta", { type: "email", name: "email", required: "", autocomplete: "email" }));
-      enviar(f, "Enviarme un código", async (fd) => {
-        const email = fd.get("email");
-        const { r, j } = await pedirCuenta({ accion: "recuperar", email });
-        if (r && r.ok) return pintarCodigo(email);
-        if (j.whatsapp) { err.textContent = ""; const n = typeof j.whatsapp === "string" ? j.whatsapp : ""; f.replaceChildren(...[el("p", { text: j.error }), n ? el("a", { class: "btn wa", href: `https://wa.me/${n}?text=${encodeURIComponent("Hola Diana, olvidé la contraseña de mi cuenta de Arcana. Mi email es " + email)}`, target: "_blank", rel: "noopener", text: "Escribir a Diana por WhatsApp" }) : null].filter(Boolean)); return; }
-        err.textContent = j.error || "No hay conexión. Intenta de nuevo.";
-      });
-      const volver = el("button", { class: "linkbtn", type: "button", text: "Volver" }); volver.onclick = () => pintar("entrar");
-      card.replaceChildren(el("h2", { text: "Recupera tu cuenta" }), el("p", { text: "Te enviaremos un código de 6 números a tu email." }), f, volver);
     }
-    function pintarCodigo(email) {
-      const err2 = err;
-      const f = el("form", {}, campo("Código de 6 números", { type: "text", inputmode: "numeric", name: "codigo", required: "", autocomplete: "one-time-code", maxlength: "6", pattern: "[0-9 ]{6,7}" }), campoClave("clave", "new-password"));
-      f.querySelector('input[name=clave]').closest("label").firstChild.textContent = "Contraseña nueva";
-      enviar(f, "Guardar y entrar", async (fd) => {
-        const { r, j } = await pedirCuenta({ accion: "restablecer", email, codigo: fd.get("codigo"), clave: fd.get("clave") });
-        if (r && r.ok) return listo(j);
-        err2.textContent = j.error || "No hay conexión. Intenta de nuevo.";
-      });
-      const otra = el("button", { class: "linkbtn", type: "button", text: "No me llegó: enviarlo otra vez" }); otra.onclick = () => pintar("olvido");
-      card.replaceChildren(el("h2", { text: "Revisa tu email" }), el("p", { class: "ok", text: `Si ${email} tiene cuenta, ya te llegó el código (mira también en spam).` }), f, otra);
-    }
+  }
+  function enlaceAyuda(n, tel) {
+    if (!n) return el("p", { text: "Escríbele a Diana por WhatsApp para recuperar tu cuenta." });
+    return el("a", { class: "btn wa", href: `https://wa.me/${n}?text=${encodeURIComponent("Hola Diana, olvidé el PIN de mi cuenta de Arcana. Mi WhatsApp es " + (tel || ""))}`, target: "_blank", rel: "noopener", text: "Escribir a Diana por WhatsApp" });
   }
   pintar(modo || "crear");
   log.appendChild(card); log.scrollTop = log.scrollHeight;
