@@ -142,7 +142,16 @@ function pintarCuentas() {
       acc.replaceChildren(i, g, w); i.focus();
     };
     const w = document.createElement("a"); w.href = wa(c.telefono || ""); w.target = "_blank"; w.rel = "noopener"; w.textContent = "WhatsApp";
-    acc.append(cambiar, w); d.append(b, info, acc); return d;
+    const confirmar = (texto, accion, aviso) => {
+      const x = document.createElement("button"); x.className = "sec"; x.textContent = texto;
+      x.onclick = async () => {
+        if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = "¿Segura? Toca otra vez"; setTimeout(() => { delete x.dataset.ok; x.textContent = texto; }, 4000); return; }
+        x.disabled = true;
+        try { const j = await api("POST", { accion, cuentaId: c.id }); $("err").style.color = "var(--ok)"; $("err").textContent = "✓ " + c.nombre + ": " + j.aviso; cargarCuentas(); } catch (e) { $("err").style.color = ""; $("err").textContent = e.message; x.disabled = false; }
+      };
+      return x;
+    };
+    acc.append(cambiar, confirmar("Borrar sus datos de nacimiento", "borrar_nacimiento"), confirmar("Eliminar cuenta", "eliminar"), w); d.append(b, info, acc); return d;
   }));
 }
 async function cargarCuentas() {

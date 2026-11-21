@@ -576,14 +576,13 @@ function mostrarIngreso(alEntrar, modo) {
       f.onsubmit = async (e) => { e.preventDefault(); err.textContent = ""; boton.disabled = true; await fn(new FormData(f)).catch(() => { err.textContent = "No hay conexión. Intenta de nuevo."; }); boton.disabled = false; };
     };
     if (m === "crear") {
-      const anterior = usuarios[0] || {}; // datos que ya dejó en este equipo antes de las cuentas
       const f = el("form", {},
-        campo("Tu nombre y apellido", { type: "text", name: "nombre", required: "", autocomplete: "name", value: anterior.nombre || "" }),
+        campo("Tu nombre y apellido", { type: "text", name: "nombre", required: "", autocomplete: "name" }),
         campo("Tu WhatsApp", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567" }),
         campoPin("Crea un PIN de 4 números"),
         el("label", { class: "check" }, el("input", { type: "checkbox", name: "acepto", required: "", checked: "" }), "Acepto que Diana guarde mis datos y mis lecturas de forma privada."));
       enviar(f, "✦ Empezar mi consulta", async (fd) => {
-        const { r, j } = await pedirCuenta({ accion: "registrar", nombre: fd.get("nombre"), telefono: fd.get("telefono"), clave: fd.get("clave"), acepto: fd.get("acepto") === "on", fecha: anterior.fecha, ciudad: anterior.ciudad });
+        const { r, j } = await pedirCuenta({ accion: "registrar", nombre: fd.get("nombre"), telefono: fd.get("telefono"), clave: fd.get("clave"), acepto: fd.get("acepto") === "on" });
         if (r && r.ok) return listo(j);
         err.textContent = j.error || "No hay conexión. Intenta de nuevo.";
         if (r && r.status === 409) setTimeout(() => pintar("entrar", fd.get("telefono")), 1800);

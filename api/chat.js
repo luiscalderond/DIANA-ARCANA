@@ -235,7 +235,7 @@ export default async function handler(req, res) {
   let perfilNuevo = null;
   const guardarDatos = betaTool({
     name: "guardar_datos",
-    description: "Guarda en la cuenta de la clienta la fecha y ciudad de nacimiento (y el nombre) de ella o de la otra persona por quien consulta, para no volver a pedírselos en otra visita. Úsala una sola vez por persona, apenas tengas los datos.",
+    description: "Guarda en la cuenta de la clienta la fecha y ciudad de nacimiento (y el nombre) de ella o de la otra persona por quien consulta, para no volver a pedírselos en otra visita. Úsala apenas tengas los datos, y otra vez si la clienta corrige su fecha, ciudad o la de la otra persona (por ejemplo, si dice que su signo no es el que le dijiste).",
     inputSchema: {
       type: "object",
       properties: {

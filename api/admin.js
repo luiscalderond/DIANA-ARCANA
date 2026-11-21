@@ -47,6 +47,13 @@ export default async function handler(req, res) {
       await cu.cambiarClave(b.cuentaId, clave);
       return res.status(200).json({ ok: true, aviso: "Listo, cuenta desbloqueada. Envíale el PIN nuevo por WhatsApp." });
     }
+    // Limpiar datos mezclados: borra fecha, ciudad, personas y resúmenes de lecturas (Arcana los vuelve a pedir), o elimina la cuenta.
+    if (b.accion === "borrar_nacimiento" || b.accion === "eliminar") {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.cuentaId || ""))) return res.status(400).json({ error: "Cuenta no válida." });
+      if (b.accion === "eliminar") { await cu.eliminarCuenta(b.cuentaId); return res.status(200).json({ ok: true, aviso: "Cuenta eliminada. Esa persona puede crearla de nuevo con su WhatsApp." }); }
+      await cu.borrarNacimiento(b.cuentaId);
+      return res.status(200).json({ ok: true, aviso: "Listo: en su próxima consulta Arcana le pedirá de nuevo su fecha y ciudad de nacimiento." });
+    }
     if (b.accion === "probar") {
       // Modo prueba para la cuenta con la que Diana entró en el chat de este teléfono.
       const suya = await cu.cuentaDeToken(String(b.token || "")).catch(() => null);
