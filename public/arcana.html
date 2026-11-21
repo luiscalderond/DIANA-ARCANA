@@ -42,6 +42,15 @@ textarea,button{font:inherit}
 .card.inv img{transform:rotate(180deg)}
 .card .name{font-family:var(--display);font-size:15px;font-weight:600;line-height:1.1}
 .card .inv-tag{font-size:10.5px;color:var(--rose);min-height:1.2em}
+.diagrama{align-self:stretch;border:1px solid var(--veil);border-radius:16px;background:var(--cloth);padding:16px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.diagrama h3{margin:0;font-family:var(--display);font-size:22px;font-weight:600}
+.diagrama .mesa{position:relative}
+.diagrama .lugar{position:absolute;border:1.5px dashed var(--candle);border-radius:6px;background:rgba(217,180,106,.08);display:flex;align-items:center;justify-content:center;font-family:var(--body);font-weight:700;color:var(--candle)}
+.diagrama .lugar.arriba{align-items:flex-start;padding-top:2px}
+.diagrama .lugar.cruzada{background:rgba(33,26,46,.92);border-style:solid}
+.diagrama ol{margin:0;padding-left:22px;align-self:stretch;color:var(--mist);font-size:14px;columns:2;column-gap:18px}
+.diagrama ol li{break-inside:avoid;margin-bottom:2px}
+.diagrama ol li::marker{color:var(--candle);font-weight:700}
 .zoom{position:fixed;inset:0;background:rgba(10,8,15,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;padding:16px;cursor:zoom-out}
 .zoom img{max-height:76vh;max-width:100%;border-radius:12px;border:1px solid var(--candle)}
 .zoom.inv img{transform:rotate(180deg)}
@@ -195,6 +204,29 @@ function mostrarCartas(cartas) {
   });
   log.appendChild(s); log.scrollTop = log.scrollHeight;
 }
+function mostrarDiagrama(d) {
+  const box = document.createElement("div"); box.className = "diagrama"; box.setAttribute("aria-label", "Diagrama de la tirada " + d.nombre);
+  const t = document.createElement("h3"); t.textContent = d.nombre;
+  // Escala para que quepa en el celular: ancho máx. ~290 px, alto máx. ~300 px.
+  const ps = d.posiciones, gx = 1.18, gy = 1.08, prop = 1.6;
+  const ancho = Math.max(...ps.map((p) => p.x)) * gx + 1, alto = Math.max(...ps.map((p) => p.y)) * gy + 1;
+  const w = Math.min(58, 290 / ancho, 300 / (alto * prop)), h = w * prop;
+  const mesa = document.createElement("div"); mesa.className = "mesa";
+  mesa.style.width = (ancho * w) + "px"; mesa.style.height = (alto * h) + "px";
+  for (const p of ps) {
+    const l = document.createElement("div"); l.className = "lugar" + (p.r ? " cruzada" : "") + (p.arriba ? " arriba" : "");
+    l.style.width = w + "px"; l.style.height = h + "px";
+    l.style.left = (p.x * gx * w) + "px"; l.style.top = (p.y * gy * h) + "px";
+    l.style.fontSize = Math.max(13, Math.min(20, w * 0.38)) + "px";
+    if (p.r) { l.style.transform = `rotate(${p.r}deg) scale(.72)`; l.style.zIndex = 2; }
+    const n = document.createElement("span"); n.textContent = p.n; if (p.r) n.style.transform = `rotate(-${p.r}deg) scale(1.3)`;
+    l.appendChild(n); mesa.appendChild(l);
+  }
+  const ol = document.createElement("ol");
+  for (const p of ps) { const li = document.createElement("li"); li.textContent = p.nombre; ol.appendChild(li); }
+  box.append(t, mesa, ol);
+  log.appendChild(box); log.scrollTop = log.scrollHeight;
+}
 function ampliarCarta(c) {
   if (!c.imagen) return;
   const z = document.createElement("div"); z.className = "zoom" + (c.invertida ? " inv" : ""); z.setAttribute("role", "dialog"); z.setAttribute("aria-label", c.carta);
@@ -246,6 +278,7 @@ async function send() {
     if (r.status === 402 && j.suscripcion) { bubble.remove(); msgU.remove(); historial.pop(); box.value = text; autosize(); if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
     if (!r.ok) { bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
     if (j.cartas) { bubble.remove(); mostrarCartas(j.cartas); log.appendChild(bubble); }
+    if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
     bubble.textContent = j.text;
     // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });

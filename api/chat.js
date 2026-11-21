@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { SISTEMA, SALUDO } from "../lib/prompt.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
-import { tirar, TIRADAS } from "../lib/mazo.js";
+import { tirar, TIRADAS, diagrama } from "../lib/mazo.js";
 import { verificarAcceso, idValido, datosDeposito } from "../lib/acceso.js";
 
 const client = new Anthropic();
@@ -129,6 +129,27 @@ export default async function handler(req, res) {
     },
   });
 
+  let dibujo = null;
+  const mostrarDiagrama = betaTool({
+    name: "mostrar_diagrama",
+    description: "Muestra en pantalla un diagrama numerado de la tirada elegida, con el lugar y el orden de cada carta. Úsala cuando la persona tiene su propio mazo y ya eligió la tirada, antes de que coloque las cartas.",
+    inputSchema: {
+      type: "object",
+      properties: { tipo: { type: "string", enum: Object.keys(TIRADAS), description: "Tipo de tirada" } },
+      required: ["tipo"],
+      additionalProperties: false,
+    },
+    run: async ({ tipo }) => {
+      try {
+        dibujo = diagrama(tipo);
+        memo += `Diagrama mostrado (${dibujo.nombre}): ${dibujo.posiciones.map((p) => p.n + " " + p.nombre).join(", ")}\n`;
+        return `Diagrama de ${dibujo.nombre} mostrado en pantalla con estas posiciones: ${dibujo.posiciones.map((p) => p.n + ". " + p.nombre).join("; ")}.`;
+      } catch (e) {
+        return "Error: " + e.message;
+      }
+    },
+  });
+
   try {
     const final = await client.beta.messages.toolRunner({
       model: "claude-opus-5-5",
@@ -136,10 +157,11 @@ export default async function handler(req, res) {
       max_iterations: 4,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort: "low" },
+      // Con foto sube el esfuerzo: reconocer las cartas con precisión importa más que la rapidez.
+      output_config: { effort: img ? "medium" : "low" },
       cache_control: { type: "ephemeral" },
       system: SISTEMA,
-      tools: [cartaAstral, tiradaVirtual],
+      tools: [cartaAstral, tiradaVirtual, mostrarDiagrama],
       messages: mensajes,
     });
 
@@ -147,7 +169,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
-    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, cartas: cartas || undefined });
+    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, cartas: cartas || undefined, diagrama: dibujo || undefined });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
     if (error instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });
