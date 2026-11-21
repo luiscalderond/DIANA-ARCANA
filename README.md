@@ -33,7 +33,7 @@ Variables de entorno en Vercel:
 - `CUENTA_DEPOSITO`: banco, tipo y número de cuenta, nombre y cédula del titular (puede ir en varias líneas).
 - `WHATSAPP_DIANA`: número con código de país, por ejemplo `593991234567`.
 - `ADMIN_CLAVE`: clave del panel, mínimo 8 caracteres.
-- `CONSULTAS_GRATIS` (opcional, por defecto 3) y `PRECIO_MENSUAL` (opcional, por defecto 5).
+- `CONSULTAS_GRATIS` (opcional, por defecto 3) y `PRECIO_MENSUAL` (opcional, por defecto 4.99).
 
 ## Costos
 
