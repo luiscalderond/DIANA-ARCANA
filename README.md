@@ -56,3 +56,7 @@ Variables de entorno en Vercel:
 ## Tarot de Marsella
 
 Las 78 cartas en `public/marsella/` son un diseño propio de Diana Arcana, inspirado en la tradición marsellesa de los siglos XVII y XVIII (dominio público). No se copió ningún mazo moderno. Se generan con `node scripts/generar-marsella.mjs public/marsella`.
+
+## Rider-Waite remasterizado
+
+Las cartas de `public/cartas/` son los escaneos de 1909 (dominio público) remasterizados con `scripts/remasterizar-rider-waite.py`: cielos de atardecer cósmico, dorado metálico, color por palo, marco con fases lunares y títulos en español. Para volver a generarlas, corre el script sobre los escaneos originales (están en el historial de git, antes del commit "Rider-Waite remasterizado"), no sobre las cartas ya procesadas.
