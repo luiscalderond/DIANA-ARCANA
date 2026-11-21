@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { SISTEMA, SALUDO } from "../lib/prompt.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
-import { tirar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
+import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
 import { verificarAcceso, idValido, datosDeposito } from "../lib/acceso.js";
 
 const client = new Anthropic();
@@ -107,10 +107,10 @@ export default async function handler(req, res) {
     },
   });
 
-  let cartas = null;
+  let baraja = null;
   const tiradaVirtual = betaTool({
     name: "tirada_virtual",
-    description: "Baraja el mazo Rider-Waite de 78 cartas con azar real y saca las cartas de una tirada, cada una al derecho o invertida. Úsala solo cuando la persona no tiene mazo físico y acepta que Arcana tire por ella. Las cartas se le muestran en pantalla.",
+    description: "Baraja el mazo Rider-Waite de 78 cartas con azar real y lo muestra en pantalla boca abajo, en abanico, para que la persona elija con el dedo las cartas de la tirada. Úsala solo cuando la persona no tiene mazo físico, en el paso de barajar. Tú no ves las cartas: la persona te enviará en su siguiente mensaje cuáles eligió.",
     inputSchema: {
       type: "object",
       properties: { tipo: { type: "string", enum: Object.keys(TIRADAS), description: "Tipo de tirada" } },
@@ -119,10 +119,9 @@ export default async function handler(req, res) {
     },
     run: async ({ tipo }) => {
       try {
-        cartas = tirar(tipo);
-        const txt = cartas.map((c, i) => `${i + 1}. ${c.posicion}: ${c.carta}${c.invertida ? " (invertida)" : ""}`).join("\n");
-        memo += `Tirada virtual (${tipo}):\n${txt}\n`;
-        return txt;
+        baraja = barajar(tipo);
+        const n = baraja.posiciones.length;
+        return `Mazo barajado y mostrado en abanico. La persona va a elegir ${n} ${n === 1 ? "carta" : "cartas"} tocándolas; la primera que elija va al lugar 1 (${baraja.posiciones[0]})${n > 1 ? ", la segunda al lugar 2, y así" : ""}. Invítala a elegir con su intuición y espera su mensaje con las cartas.`;
       } catch (e) {
         return "Error: " + e.message;
       }
@@ -193,7 +192,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
-    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, cartas: cartas || undefined, diagrama: dibujo || undefined, plan: indice || undefined });
+    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
     if (error instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });

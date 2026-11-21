@@ -65,6 +65,22 @@ textarea,button{font:inherit}
 .plan li::before{content:counter(paso);width:30px;height:30px;border-radius:50%;border:1px solid var(--candle);color:var(--candle);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
 .plan b{display:block;font-weight:700}
 .plan span{color:var(--mist);font-size:14px}
+.baraja{align-self:stretch;border:1px solid var(--candle);border-radius:16px;background:rgba(33,26,46,.9);padding:16px 0;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+.baraja h3{margin:0;font-family:var(--display);font-size:22px;font-weight:600;padding-inline:16px}
+.baraja .guia{margin:0;color:var(--mist);font-size:14px;padding-inline:16px;min-height:1.5em}
+.baraja .guia b{color:var(--candle)}
+.abanico{width:100%;overflow-x:auto;overflow-y:visible;padding:26px 16px 14px;display:flex;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.dorso{flex:none;width:58px;height:100px;margin-left:-36px;border-radius:7px;border:1px solid var(--candle);cursor:pointer;position:relative;padding:0;
+  background:radial-gradient(circle at 50% 50%,rgba(217,180,106,.35) 0 9px,transparent 10px),repeating-linear-gradient(45deg,rgba(217,180,106,.13) 0 2px,transparent 2px 8px),linear-gradient(160deg,#2a2040,#16121f);
+  box-shadow:-3px 2px 8px rgba(0,0,0,.45);transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .4s,box-shadow .3s;scroll-snap-align:center}
+.dorso:first-child{margin-left:0}
+.dorso::after{content:"✦";position:absolute;inset:0;display:grid;place-items:center;color:var(--candle);font-size:15px}
+.dorso:hover,.dorso:focus-visible{transform:translateY(-10px)}
+.dorso.elegida{transform:translateY(-22px);box-shadow:0 0 0 2px var(--candle),0 0 22px rgba(217,180,106,.6)}
+.dorso.elegida::before{content:attr(data-n);position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--candle);color:var(--night);font-weight:700;font-size:12px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;z-index:3}
+.baraja.cerrada .dorso:not(.elegida){opacity:.25;pointer-events:none}
+.abanico.barajando .dorso{transform:translateX(var(--junta)) rotate(var(--giro))}
+@media (prefers-reduced-motion:no-preference){.abanico.barajando{animation:mezcla .35s ease-in-out 3}@keyframes mezcla{50%{transform:translateX(6px)}}}
 .zoom{position:fixed;inset:0;background:rgba(10,8,15,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;padding:16px;cursor:zoom-out}
 .zoom img{max-height:76vh;max-width:100%;border-radius:12px;border:1px solid var(--candle)}
 .zoom.inv img{transform:rotate(180deg)}
@@ -120,7 +136,7 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
     <div class="welcome" id="welcome">
       <span class="eyebrow">Diana Arcana</span>
       <h1>Tu lectura empieza con una pregunta</h1>
-      <p>Arcana te guía para barajar tu mazo y lee tus cartas con una foto. Si no tienes cartas, ella hace la tirada por ti. También calcula tu carta astral, prepara rituales y lee registros akáshicos.</p>
+      <p>Arcana te guía para barajar tu mazo y lee tus cartas con una foto. Si no tienes cartas, ella baraja en pantalla y tú eliges las tuyas. También calcula tu carta astral, prepara rituales y lee registros akáshicos.</p>
       <button class="btn" id="start" type="button">Comenzar consulta</button>
       <small class="nota-musica">🎵 Con música relajante. Puedes quitarla arriba con 🎵.</small>
     </div>
@@ -223,6 +239,49 @@ function mostrarCartas(cartas) {
   });
   log.appendChild(s); log.scrollTop = log.scrollHeight;
 }
+function mostrarBaraja(b) {
+  const n = b.posiciones.length, elegidas = [];
+  const box = document.createElement("div"); box.className = "baraja"; box.setAttribute("aria-label", "Mazo barajado: elige tus cartas");
+  const t = document.createElement("h3"); t.textContent = n === 1 ? "Elige tu carta" : `Elige ${n} cartas`;
+  const guia = document.createElement("p"); guia.className = "guia"; guia.textContent = "Arcana está barajando…";
+  const fan = document.createElement("div"); fan.className = "abanico barajando";
+  const total = b.cartas.length;
+  b.cartas.forEach((c, i) => {
+    const d = document.createElement("button"); d.type = "button"; d.className = "dorso";
+    d.setAttribute("aria-label", `Carta boca abajo ${i + 1} de ${total}`);
+    // Al barajar, todas se juntan al centro con un giro distinto; luego se abren en abanico.
+    d.style.setProperty("--junta", `${(total / 2 - i) * 22}px`); d.style.setProperty("--giro", `${(Math.random() * 16 - 8).toFixed(1)}deg`);
+    d.onclick = () => {
+      if (fan.classList.contains("barajando") || d.classList.contains("elegida") || elegidas.length >= n) return;
+      elegidas.push({ ...c, posicion: b.posiciones[elegidas.length] });
+      d.classList.add("elegida"); d.dataset.n = elegidas.length;
+      actualizar();
+      if (elegidas.length === n) {
+        box.classList.add("cerrada");
+        setTimeout(() => {
+          const lista = elegidas.map((e, k) => `${k + 1}. ${e.posicion}: ${e.carta}${e.invertida ? " (invertida)" : ""}`).join("\n");
+          send({ texto: `Elegí mis cartas del mazo en pantalla (${b.nombre}):\n${lista}`, visible: n === 1 ? "✦ Elegí mi carta" : "✦ Elegí mis cartas", alEnviar: () => mostrarCartas(elegidas) });
+        }, 900);
+      }
+    };
+    fan.appendChild(d);
+  });
+  function actualizar() {
+    if (elegidas.length >= n) { guia.textContent = "Tus cartas están elegidas. Arcana las está revelando…"; return; }
+    guia.innerHTML = "";
+    const k = elegidas.length;
+    guia.append(n === 1 ? "Toca la carta que te llame" : `Carta ${k + 1} de ${n}: `);
+    if (n > 1) { const bb = document.createElement("b"); bb.textContent = b.posiciones[k]; guia.appendChild(bb); }
+  }
+  box.append(t, guia, fan);
+  log.appendChild(box); log.scrollTop = log.scrollHeight;
+  fan.scrollLeft = (fan.scrollWidth - fan.clientWidth) / 2; // el mazo junto queda a la vista mientras se baraja
+  setTimeout(() => {
+    fan.classList.remove("barajando");
+    fan.scrollLeft = (fan.scrollWidth - fan.clientWidth) / 2;
+    actualizar();
+  }, 1300);
+}
 function mostrarPlan(pl) {
   const box = document.createElement("div"); box.className = "plan"; box.setAttribute("aria-label", "Pasos de tu consulta");
   const t = document.createElement("h3"); t.textContent = "Así será tu lectura";
@@ -285,17 +344,18 @@ async function reducirImagen(file) {
 }
 
 /* ---------- Enviar ---------- */
-async function send() {
+async function send(auto) {
   if (busy) return;
-  const text = box.value.trim();
+  const text = auto ? auto.texto : box.value.trim();
   if (!text && !pendingImage) return;
   if (!started) begin(false);
   callar();
-  const img = pendingImage;
-  const msgU = addMsg("u", text || "Aquí está la foto de mi tirada.", img && img.url);
+  const img = auto ? null : pendingImage;
+  const msgU = addMsg("u", auto ? auto.visible : (text || "Aquí está la foto de mi tirada."), img && img.url);
   historial.push({ role: "user", content: text || "Aquí está la foto de mi tirada." });
   const entradaUsuario = historial[historial.length - 1];
-  box.value = ""; autosize(); clearPhoto();
+  if (auto && auto.alEnviar) auto.alEnviar();
+  if (!auto) { box.value = ""; autosize(); clearPhoto(); }
   busy = true; sendBtn.disabled = true;
   const bubble = addMsg("a thinking", img ? "Arcana está mirando tus cartas…" : "Arcana está pensando…");
   try {
@@ -305,9 +365,9 @@ async function send() {
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");
-    if (r.status === 402 && j.suscripcion) { bubble.remove(); msgU.remove(); historial.pop(); box.value = text; autosize(); if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
+    if (r.status === 402 && j.suscripcion) { bubble.remove(); msgU.remove(); historial.pop(); if (!auto) { box.value = text; autosize(); } if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
     if (!r.ok) { bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
-    if (j.cartas) { bubble.remove(); mostrarCartas(j.cartas); log.appendChild(bubble); }
+    if (j.baraja) { bubble.remove(); log.appendChild(bubble); }
     if (j.plan) { bubble.remove(); mostrarPlan(j.plan); log.appendChild(bubble); }
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
     bubble.textContent = j.text;
@@ -317,6 +377,7 @@ async function send() {
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
     hablar(j.text);
+    if (j.baraja) mostrarBaraja(j.baraja);
   } catch (e) {
     bubble.classList.remove("thinking");
     bubble.textContent = "No hay conexión. Revisa tu internet y vuelve a enviar tu mensaje.";
@@ -408,7 +469,7 @@ $("nueva").onclick = () => {
 };
 
 $("start").onclick = () => { begin(true); box.focus(); };
-sendBtn.onclick = send;
+sendBtn.onclick = () => send();
 box.addEventListener("input", autosize);
 box.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
 photoBtn.onclick = () => photo.click();
