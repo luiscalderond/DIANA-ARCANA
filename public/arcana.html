@@ -180,6 +180,7 @@ let dispositivo;
 try { dispositivo = localStorage.getItem("arcana-dispositivo"); if (!dispositivo) { dispositivo = nuevoId(); localStorage.setItem("arcana-dispositivo", dispositivo); } } catch { dispositivo = nuevoId(); }
 let consulta = nuevoId();
 let busy = false, started = false, voiceOn = true, pendingImage = null;
+let lectura = null, nombreTirada = "";   // lectura actual para el PDF: { nombre, cartas, foto, textos }
 
 /* ---------- Voz de Arcana (síntesis del navegador, gratis) ---------- */
 const synth = window.speechSynthesis;
@@ -259,7 +260,100 @@ function addReplay(d, text) {
   b.onclick = () => hablar(text, true);
   t.appendChild(b); d.appendChild(t);
 }
+/* ---------- PDF de la lectura: se arma en el navegador, sin llamar a la IA (costo $0) ---------- */
+function botonPdf(bubble) {
+  let t = bubble.querySelector(".tools");
+  if (!t) { t = document.createElement("div"); t.className = "tools"; bubble.appendChild(t); }
+  const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn"; b.textContent = "📜 Guardar mi lectura en PDF";
+  b.onclick = async () => { b.disabled = true; const antes = b.textContent; b.textContent = "Preparando tu PDF…"; try { await generarPdf(); } catch (e) { console.error(e); alertaSuave(b, "No pude crear el PDF. Intenta de nuevo."); } b.textContent = antes; b.disabled = false; };
+  t.appendChild(b);
+}
+function alertaSuave(cerca, texto) { const p = document.createElement("div"); p.className = "msg a"; p.textContent = texto; cerca.closest(".msg").after(p); }
+function cargarScript(src) { return new Promise((ok, mal) => { const sc = document.createElement("script"); sc.src = src; sc.onload = ok; sc.onerror = mal; document.head.appendChild(sc); }); }
+function imagenJpg(src, invertida) {
+  return new Promise((ok, mal) => {
+    const im = new Image(); im.crossOrigin = "anonymous";
+    im.onload = () => {
+      const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const x = c.getContext("2d");
+      if (invertida) { x.translate(c.width, c.height); x.rotate(Math.PI); }
+      x.drawImage(im, 0, 0); ok({ data: c.toDataURL("image/jpeg", 0.85), w: c.width, h: c.height });
+    };
+    im.onerror = mal; im.src = src;
+  });
+}
+// jsPDF con letra estándar: solo caracteres latinos (quita emojis y símbolos).
+const latino = (t) => String(t).replace(/[^\x20-\x7E -ÿ\n]/g, "").replace(/[ \t]+\n/g, "\n").trim();
+async function generarPdf() {
+  if (!lectura) return;
+  if (!window.jspdf) await cargarScript("/vendor/jspdf.umd.min.js");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const W = 210, H = 297, M = 18;
+  const fondo = () => {
+    doc.setFillColor(26, 16, 41); doc.rect(0, 0, W, H, "F");
+    doc.setDrawColor(201, 154, 69); doc.setLineWidth(0.6); doc.rect(8, 8, W - 16, H - 16);
+    doc.setLineWidth(0.2); doc.rect(10, 10, W - 20, H - 20);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(181, 170, 196);
+    doc.text("diana-arcana.vercel.app  ·  Tus primeras 2 consultas son gratis", W / 2, H - 14, { align: "center" });
+  };
+  fondo();
+  doc.setFont("times", "bold"); doc.setFontSize(30); doc.setTextColor(246, 223, 160);
+  doc.text("Diana Arcana", W / 2, 30, { align: "center" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(181, 170, 196);
+  const fecha = new Date().toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" });
+  doc.text(latino(`${lectura.nombre}  ·  ${fecha}`), W / 2, 38, { align: "center" });
+  doc.setDrawColor(201, 154, 69); doc.line(W / 2 - 25, 43, W / 2 + 25, 43);
+  let y = 52;
+  // Cartas (o la foto de su tirada)
+  const cartas = (lectura.cartas || []).filter((c) => c.imagen);
+  if (cartas.length) {
+    const porFila = Math.min(cartas.length, 5), gap = 6;
+    const cw = Math.min(34, (W - 2 * M - gap * (porFila - 1)) / porFila), ch = cw * 527 / 300;
+    for (let i = 0; i < cartas.length; i++) {
+      const fila = Math.floor(i / porFila), col = i % porFila;
+      const enFila = Math.min(porFila, cartas.length - fila * porFila);
+      const x0 = (W - (enFila * cw + (enFila - 1) * gap)) / 2;
+      const x = x0 + col * (cw + gap), yy = y + fila * (ch + 22);
+      const im = await imagenJpg(cartas[i].imagen, cartas[i].invertida);
+      doc.setFillColor(201, 154, 69); doc.roundedRect(x - 1.2, yy - 1.2, cw + 2.4, ch + 2.4, 2, 2, "F");
+      doc.addImage(im.data, "JPEG", x, yy, cw, ch);
+      doc.setFont("times", "bold"); doc.setFontSize(9.5); doc.setTextColor(246, 223, 160);
+      doc.text(doc.splitTextToSize(latino(cartas[i].carta + (cartas[i].invertida ? " (inv.)" : "")), cw + 6), x + cw / 2, yy + ch + 5, { align: "center" });
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(181, 170, 196);
+      doc.text(doc.splitTextToSize(latino(cartas[i].posicion || ""), cw + 6), x + cw / 2, yy + ch + 13, { align: "center" });
+    }
+    y += Math.ceil(cartas.length / porFila) * (ch + 22) + 4;
+  } else if (lectura.foto) {
+    const im = await imagenJpg(lectura.foto, false);
+    const w = 110, h = Math.min(90, w * im.h / im.w), ww = h * im.w / im.h;
+    doc.addImage(im.data, "JPEG", (W - ww) / 2, y, ww, h); y += h + 8;
+  }
+  // Texto de la lectura
+  doc.setFont("times", "italic"); doc.setFontSize(15); doc.setTextColor(246, 223, 160);
+  doc.text("Tu lectura", M, y); y += 7;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(239, 232, 245);
+  for (const parrafo of lectura.textos.map(latino).filter(Boolean)) {
+    for (const linea of doc.splitTextToSize(parrafo, W - 2 * M)) {
+      if (y > H - 24) { doc.addPage(); fondo(); y = 24; doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(239, 232, 245); }
+      doc.text(linea, M, y); y += 5.2;
+    }
+    y += 3;
+  }
+  if (y > H - 40) { doc.addPage(); fondo(); y = 24; }
+  doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(181, 170, 196);
+  doc.text(doc.splitTextToSize("Lectura de Arcana, asistente virtual de Diana. Es una guía de autoconocimiento y no reemplaza consejo médico, legal ni financiero.", W - 2 * M), M, y + 6);
+  const archivo = "lectura-diana-arcana.pdf";
+  const blob = doc.output("blob");
+  const file = new File([blob], archivo, { type: "application/pdf" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: "Mi lectura de Diana Arcana", text: "Mira mi lectura de tarot con Arcana ✨ diana-arcana.vercel.app" }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  doc.save(archivo);
+}
 function mostrarCartas(cartas) {
+  lectura = { nombre: nombreTirada || "Tu tirada", cartas, foto: null, textos: [] };
   const s = document.createElement("div"); s.className = "spread" + (cartas.length > 5 ? " muchas" : ""); s.setAttribute("aria-label", "Cartas de tu tirada");
   cartas.forEach((c, i) => {
     const k = document.createElement("button"); k.type = "button"; k.className = "card" + (c.invertida ? " inv" : "");
@@ -277,6 +371,7 @@ function mostrarCartas(cartas) {
   log.appendChild(s); log.scrollTop = log.scrollHeight;
 }
 function mostrarBaraja(b) {
+  nombreTirada = b.nombre;
   const n = b.posiciones.length, elegidas = [];
   const box = document.createElement("div"); box.className = "baraja"; box.setAttribute("aria-label", "Mazo barajado: elige tus cartas");
   const t = document.createElement("h3"); t.textContent = n === 1 ? "Elige tu carta" : `Elige ${n} cartas`;
@@ -414,6 +509,8 @@ async function send(auto) {
     if (img) entradaUsuario.content = "[Aquí envié la foto de mi tirada. Arcana la vio y la describió en su respuesta siguiente; la imagen ya no se vuelve a adjuntar.] " + entradaUsuario.content;
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
+    if (img) lectura = { nombre: "Tu tirada con tu propio mazo", cartas: null, foto: img.url, textos: [] };
+    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) botonPdf(bubble); }
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
     if (j.suscripcion) mostrarSuscripcion(j);
