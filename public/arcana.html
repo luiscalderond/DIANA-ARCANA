@@ -312,35 +312,58 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 
 @media (prefers-reduced-motion:no-preference){.msg.thinking{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{opacity:.5}}}
 /* Juego «Escoge tu suerte»: mazo de arcanos mayores con lomo dorado, una vez al día tras la lectura. */
-.suerte{position:fixed;inset:0;z-index:70;background:radial-gradient(90% 70% at 50% 45%,rgba(52,32,86,.98),rgba(8,6,14,.99));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px;text-align:center;overflow:hidden}
-.suerte h2{margin:0;font-family:var(--display);font-size:clamp(30px,8vw,42px);font-weight:600;color:#f3d99a;text-shadow:0 0 18px rgba(243,217,154,.55)}
-.suerte .sub{margin:0;color:var(--mist);font-size:15px}
-.suerte .cerrar{position:absolute;top:14px;right:14px;border:0;background:rgba(255,255,255,.08);color:var(--ink);width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer}
-.suerte .mesa{position:relative;width:min(560px,100%);height:200px;margin-top:6px}
-@media (min-width:600px){.suerte .oro{width:66px;height:116px;margin-left:-33px}.suerte .mesa{height:240px}}
-.suerte .oro{position:absolute;left:50%;bottom:0;width:54px;height:94px;margin-left:-27px;border:0;padding:0;border-radius:8px;cursor:pointer;background:url(/dorso-oro.svg) center/100% 100% no-repeat;box-shadow:0 6px 14px rgba(0,0,0,.55),0 0 0 1px rgba(255,236,180,.6);transform-origin:50% 300%;transform:rotate(var(--a));transition:transform .35s ease,box-shadow .35s,opacity .4s}
+.suerte{position:fixed;inset:0;z-index:70;background:radial-gradient(75% 60% at 50% 55%,#2c1b4a 0%,#170f29 55%,#05030a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px 16px;text-align:center;overflow:hidden;touch-action:manipulation}
+.suerte .fondo{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.suerte .vineta{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.75) 100%)}
+.suerte .halo{position:absolute;left:50%;top:62%;width:520px;height:420px;margin:-210px 0 0 -260px;background:radial-gradient(closest-side,rgba(255,206,110,.38),rgba(255,206,110,.12) 55%,transparent);filter:blur(6px)}
+.suerte .foco{position:absolute;left:0;top:0;width:260px;height:260px;margin:-130px 0 0 -130px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,230,170,.22),transparent);transform:translate(var(--x,50vw),var(--y,60vh));transition:transform .35s ease-out}
+.suerte .mota{position:absolute;bottom:-10px;width:var(--s);height:var(--s);border-radius:50%;background:#ffe3a1;box-shadow:0 0 6px 1px rgba(255,214,120,.8);opacity:0}
+.suerte .rastro{position:absolute;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff3c4;box-shadow:0 0 8px 2px rgba(255,214,120,.9);pointer-events:none;animation:rastro .8s ease-out forwards}
+.suerte .placa{position:relative;padding:14px 22px 16px;border-radius:18px;background:rgba(10,6,20,.55);border:1px solid rgba(243,217,154,.35);box-shadow:0 10px 40px rgba(0,0,0,.5),inset 0 0 24px rgba(243,217,154,.08);max-width:440px}
+.suerte .kicker{margin:0 0 4px;font:700 12px var(--body);letter-spacing:.32em;color:var(--candle)}
+.suerte h2{margin:0;font-family:var(--display);font-size:clamp(34px,9.5vw,50px);line-height:1.05;font-weight:700;color:#fbe7ad;background:linear-gradient(180deg,#fff6d6,#f3d99a 45%,#c99a3e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 14px rgba(243,217,154,.45))}
+.suerte .sub{margin:10px 0 0;color:#f4ecff;font-size:17px;font-weight:500;line-height:1.4;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.suerte .cerrar{position:absolute;top:14px;right:14px;z-index:2;border:0;background:rgba(255,255,255,.1);color:var(--ink);width:40px;height:40px;border-radius:50%;font-size:16px;cursor:pointer}
+.suerte .mesa{position:relative;width:min(560px,100%);height:200px}
+@media (min-width:600px){.suerte .oro{width:66px!important;height:116px!important;margin-left:-33px!important}.suerte .mesa{height:240px}}
+.suerte .oro{position:absolute;left:50%;bottom:0;width:54px;height:94px;margin-left:-27px;border:0;padding:0;border-radius:8px;cursor:pointer;background:url(/dorso-oro.svg) center/100% 100% no-repeat;box-shadow:0 6px 14px rgba(0,0,0,.55),0 0 0 1px rgba(255,236,180,.6);transform-origin:50% 300%;transform:rotate(var(--a));transition:transform .25s ease,box-shadow .25s,opacity .4s;-webkit-tap-highlight-color:transparent}
 .suerte .oro::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);background-size:250% 100%;animation:oroBrillo 3.2s linear infinite;animation-delay:var(--t);pointer-events:none}
-.suerte .oro:hover,.suerte .oro:focus-visible{transform:rotate(var(--a)) translateY(-18px);box-shadow:0 0 22px 4px rgba(255,214,120,.8)}
+.suerte .oro:hover,.suerte .oro:focus-visible,.suerte .oro.tocada{transform:rotate(var(--a)) translateY(-20px) scale(1.06);box-shadow:0 0 0 2px #fff3c4,0 0 26px 6px rgba(255,214,120,.9);z-index:3}
 .suerte.elegida .oro{opacity:0;pointer-events:none}
-.suerte .revela{display:none;flex-direction:column;align-items:center;gap:12px;max-width:420px}
+.suerte.elegida .oro.tocada{opacity:1}
+.suerte .revela{display:none;flex-direction:column;align-items:center;gap:12px;max-width:420px;position:relative}
 .suerte.elegida .revela{display:flex}
-.suerte.elegida .mesa{display:none}
+.suerte.elegida .mesa,.suerte.elegida .placa .sub{display:none}
 .suerte .giro{width:170px;height:298px;perspective:900px}
 .suerte .giro .in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.3,.7,.2,1)}
 .suerte .giro.ver .in{transform:rotateY(180deg)}
-.suerte .giro .cara,.suerte .giro .lomo{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;box-shadow:0 0 34px rgba(255,214,120,.55)}
+.suerte .giro .cara,.suerte .giro .lomo{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;box-shadow:0 0 40px rgba(255,214,120,.6)}
 .suerte .giro .lomo{background:url(/dorso-oro.svg) center/100% 100% no-repeat}
 .suerte .giro .cara{transform:rotateY(180deg);background:#1d1433 center/cover no-repeat}
-.suerte h3{margin:0;font-family:var(--display);font-size:28px;color:#f3d99a}
-.suerte .mensaje{margin:0;font-size:17px;line-height:1.5;color:var(--ink)}
-.suerte .acc{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px}
-.suerte .acc button,.suerte .acc a{border:1px solid var(--candle);border-radius:999px;background:transparent;color:#f3d99a;font:600 15px var(--body);padding:10px 18px;cursor:pointer;text-decoration:none}
+.suerte h3{margin:0;font-family:var(--display);font-size:30px;color:#f3d99a;text-shadow:0 0 14px rgba(243,217,154,.4)}
+.suerte .mensaje{margin:0;font-size:17px;line-height:1.5;color:#f4ecff}
+.suerte .acc{display:flex;flex-direction:column;gap:8px;align-items:stretch;width:min(340px,100%);margin-top:4px}
+.suerte .acc button,.suerte .acc a{border:1px solid var(--candle);border-radius:999px;background:transparent;color:#f3d99a;font:600 15px var(--body);padding:11px 18px;cursor:pointer;text-decoration:none}
 .suerte .acc .principal{background:var(--candle);color:var(--night);border-color:var(--candle)}
+.suerte .acc .wa{background:#1f9d55;border-color:#1f9d55;color:#fff}
+.suerte .acc .volver{border:0;color:var(--mist);text-decoration:underline;padding:6px}
 .suerte .revela > *:not(.giro){opacity:0;transition:opacity .6s .9s}
 .suerte .revela.lista > *{opacity:1}
 @keyframes oroBrillo{from{background-position:150% 0}to{background-position:-100% 0}}
-@media (prefers-reduced-motion:no-preference){.suerte .mesa .oro{animation:oroEntra .7s ease-out both;animation-delay:var(--e)}@keyframes oroEntra{from{transform:rotate(0) translateY(120px);opacity:0}}.suerte .mesa{animation:flota 4s ease-in-out infinite}@keyframes flota{50%{transform:translateY(-6px)}}}
-@media (prefers-reduced-motion:reduce){.suerte .oro::after{animation:none}.suerte .giro .in{transition:none}}
+@keyframes rastro{to{opacity:0;transform:scale(.2) translateY(-10px)}}
+@media (prefers-reduced-motion:no-preference){
+.suerte .mesa .oro{animation:oroEntra .55s cubic-bezier(.34,1.56,.64,1) backwards;animation-delay:var(--e)}
+@keyframes oroEntra{from{transform:rotate(0) translateY(90px) scale(.85);opacity:0}}
+.suerte .oro.llama{animation:llama 1.6s ease-in-out}
+@keyframes llama{40%{transform:rotate(var(--a)) translateY(-14px);box-shadow:0 0 0 2px #fff3c4,0 0 30px 8px rgba(255,214,120,.95)}}
+.suerte .mota{animation:mota var(--d) linear infinite;animation-delay:var(--t)}
+@keyframes mota{10%{opacity:var(--o)}90%{opacity:var(--o)}to{transform:translate(var(--dx),-105vh);opacity:0}}
+.suerte .halo{animation:halo 5s ease-in-out infinite}
+@keyframes halo{50%{opacity:.7;transform:scale(1.06)}}
+.suerte{animation:suerteEntra .5s ease-out}
+@keyframes suerteEntra{from{opacity:0}}
+}
+@media (prefers-reduced-motion:reduce){.suerte .oro::after{animation:none}.suerte .giro .in{transition:none}.suerte .mota,.suerte .rastro{display:none}}
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -1232,35 +1255,72 @@ function prepararSuerte(ancla) {
 function mostrarSuerte() {
   try { localStorage.setItem(claveSuerte(), hoyLocal()); } catch {}
   const box = el("div", { id: "suerte", class: "suerte", role: "dialog", "aria-modal": "true", "aria-label": "Escoge tu suerte" });
-  const cerrar = el("button", { type: "button", class: "cerrar", "aria-label": "Cerrar", text: "✕" }); cerrar.onclick = () => box.remove();
+  const fondo = el("div", { class: "fondo", "aria-hidden": "true" }, el("div", { class: "halo" }), el("div", { class: "vineta" }));
+  const foco = el("div", { class: "foco" }); fondo.append(foco);
+  for (let i = 0; i < 26; i++) {
+    const m = el("span", { class: "mota" });
+    m.style.left = (Math.random() * 100).toFixed(1) + "%";
+    m.style.setProperty("--s", (1.5 + Math.random() * 3).toFixed(1) + "px"); m.style.setProperty("--o", (0.35 + Math.random() * 0.5).toFixed(2));
+    m.style.setProperty("--d", (8 + Math.random() * 7).toFixed(1) + "s"); m.style.setProperty("--t", (-Math.random() * 15).toFixed(1) + "s");
+    m.style.setProperty("--dx", (Math.random() * 60 - 30).toFixed(0) + "px");
+    fondo.append(m);
+  }
+  // La luz y un rastro de estrellas siguen el dedo o el cursor.
+  let ultimo = 0;
+  box.addEventListener("pointermove", (e) => {
+    box.style.setProperty("--x", e.clientX + "px"); box.style.setProperty("--y", e.clientY + "px");
+    const ahora = performance.now(); if (ahora - ultimo < 45) return; ultimo = ahora;
+    const r = el("span", { class: "rastro" }); r.style.left = e.clientX + "px"; r.style.top = e.clientY + "px";
+    fondo.append(r); setTimeout(() => r.remove(), 850);
+  });
+  const cerrar = el("button", { type: "button", class: "cerrar", "aria-label": "Cerrar", text: "✕" });
   const mesa = el("div", { class: "mesa" });
   const orden = [...SUERTE.keys()].sort(() => Math.random() - 0.5), n = orden.length;
-  orden.forEach((idx, i) => {
+  let elegida = false, llamador = null;
+  const cartas = orden.map((idx, i) => {
     const b = el("button", { type: "button", class: "oro", "aria-label": `Carta dorada ${i + 1} de ${n}` });
     b.style.setProperty("--a", ((i - (n - 1) / 2) * 3.2).toFixed(1) + "deg");
-    b.style.setProperty("--e", (i * 0.035).toFixed(2) + "s"); b.style.setProperty("--t", (Math.random() * 3).toFixed(2) + "s");
-    b.onclick = () => revelar(idx);
+    b.style.setProperty("--e", (i * 0.022).toFixed(3) + "s"); b.style.setProperty("--t", (Math.random() * 3).toFixed(2) + "s");
+    b.onpointerdown = () => { if (!elegida) b.classList.add("tocada"); };
+    b.onpointerleave = () => { if (!elegida) b.classList.remove("tocada"); };
+    b.onclick = () => {
+      if (elegida) return; elegida = true; clearInterval(llamador);
+      b.classList.add("tocada"); sonar("roce"); if (navigator.vibrate) try { navigator.vibrate(25); } catch {}
+      setTimeout(() => revelar(idx), 380); // un instante de anticipación antes de girar
+    };
     mesa.appendChild(b);
+    return b;
   });
+  // Si duda, una carta distinta «la llama» con un destello cada pocos segundos.
+  llamador = setInterval(() => {
+    if (elegida || !document.body.contains(box)) return clearInterval(llamador);
+    const c = cartas[Math.floor(Math.random() * n)]; c.classList.remove("llama"); void c.offsetWidth; c.classList.add("llama");
+    setTimeout(() => c.classList.remove("llama"), 1700);
+  }, 3200);
+  const salir = () => { clearInterval(llamador); box.remove(); };
+  cerrar.onclick = salir;
   const giro = el("div", { class: "giro" }), inner = el("div", { class: "in" }), cara = el("div", { class: "cara" });
   inner.append(el("div", { class: "lomo" }), cara); giro.append(inner);
   const titulo = el("h3"), mensaje = el("p", { class: "mensaje" }), acc = el("div", { class: "acc" });
   const revela = el("div", { class: "revela" }, giro, titulo, mensaje, acc);
-  box.append(cerrar, el("h2", { text: "✦ Escoge tu suerte ✦" }), el("p", { class: "sub", text: "Toca la carta dorada que te llame" }), mesa, revela);
+  const h2 = el("h2", { text: "Tu carta revela tu suerte de hoy" });
+  const placa = el("div", { class: "placa" }, el("p", { class: "kicker", text: "✦ ESCOGE TU SUERTE ✦" }), h2, el("p", { class: "sub", text: "Confía en tu intuición y toca la carta que te llame" }));
+  box.append(fondo, cerrar, placa, mesa, revela);
   document.body.appendChild(box); sonar("roce");
   function revelar(idx) {
     const [nombre, texto] = SUERTE[idx];
     cara.style.backgroundImage = `url(/cartas/m${String(idx).padStart(2, "0")}.webp)`;
-    titulo.textContent = nombre; mensaje.textContent = texto;
-    box.classList.add("elegida"); box.querySelector(".sub").textContent = "Tu carta de la suerte para hoy";
-    sonar("roce"); requestAnimationFrame(() => requestAnimationFrame(() => { giro.classList.add("ver"); revela.classList.add("lista"); }));
+    titulo.textContent = nombre; mensaje.textContent = texto; h2.textContent = "Tu carta de la suerte para hoy";
+    box.classList.add("elegida");
+    requestAnimationFrame(() => requestAnimationFrame(() => { giro.classList.add("ver"); revela.classList.add("lista"); }));
+    setTimeout(() => { sonar("roce"); if (navigator.vibrate) try { navigator.vibrate([20, 60, 30]); } catch {} }, 700);
     setTimeout(() => hablar(`${nombre}. ${texto}`), 900);
     const otra = el("button", { type: "button", class: "principal", text: "✦ Hacer otra tirada" });
-    otra.onclick = () => { box.remove(); send({ texto: "Quiero hacer otra tirada.", visible: "✦ Quiero hacer otra tirada" }); };
+    otra.onclick = () => { salir(); send({ texto: "Quiero hacer otra tirada.", visible: "✦ Quiero hacer otra tirada" }); };
     const url = `${location.origin}/?ref=${miCodigo}`;
-    const compartir = el("a", { href: "https://wa.me/?text=" + encodeURIComponent(`Mi carta de la suerte de hoy es ${nombre} ✨ «${texto}» Descubre la tuya con Arcana, la asistente de Diana: ${url}`), target: "_blank", rel: "noopener", text: "Compartir mi suerte" });
-    const listo = el("button", { type: "button", text: "Cerrar" }); listo.onclick = () => box.remove();
-    acc.replaceChildren(otra, compartir, listo);
+    const compartir = el("a", { class: "wa", href: "https://wa.me/?text=" + encodeURIComponent(`Mi carta de la suerte de hoy es ${nombre} ✨ «${texto}» Descubre la tuya con Arcana, la asistente de Diana: ${url}`), target: "_blank", rel: "noopener", text: "Mándale tu suerte de hoy por WhatsApp" });
+    const volver = el("button", { type: "button", class: "volver", text: "Volver a mi lectura" }); volver.onclick = salir;
+    acc.replaceChildren(otra, compartir, volver);
   }
 }
 function mostrarOpinion(despuesDe) {
