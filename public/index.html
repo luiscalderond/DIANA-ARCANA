@@ -139,6 +139,8 @@ footer .wrap{display:grid;gap:12px}
   .steps,.services,form{grid-template-columns:1fr}
   .navlinks{display:none}
 }
+.musica-flot{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:40;width:48px;height:48px;border-radius:50%;border:1px solid var(--candle,#d9b46a);background:rgba(22,18,31,.85);color:#d9b46a;font-size:22px;cursor:pointer;display:grid;place-items:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.musica-flot[aria-pressed="false"]{opacity:.55}
 </style>
 </head>
 <body>
@@ -335,5 +337,13 @@ document.getElementById('agendaForm').addEventListener('submit', function(e){
 })();
 </script>
 
+<button class="musica-flot" id="musica" type="button" aria-pressed="false" aria-label="Música relajante" title="Música relajante"><span aria-hidden="true">🎵</span></button>
+<script src="/musica.js"></script>
+<script>
+  // Los navegadores no dejan sonar música sin un toque: empieza con el primer toque o tecla.
+  document.getElementById("musica").onclick = (e) => { e.stopPropagation(); Musica.alternar(); };
+  const arrancar = (e) => { if (e && e.target.closest && e.target.closest("#musica")) return; Musica.iniciar(); removeEventListener("pointerdown", arrancar); removeEventListener("keydown", arrancar); };
+  addEventListener("pointerdown", arrancar); addEventListener("keydown", arrancar);
+</script>
 </body>
 </html>
