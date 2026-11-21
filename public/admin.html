@@ -44,7 +44,7 @@ a{color:var(--candle)}
     <div id="lista" style="display:grid;gap:10px"></div>
     <h1 style="margin-top:28px">Conversaciones</h1>
     <p id="cvResumen" style="margin:6px 0 12px"></p>
-    <input id="cvBuscar" placeholder="Buscar palabra en las conversaciones" style="margin-bottom:10px;width:100%">
+    <input id="cvBuscar" placeholder="Buscar clienta o palabra en las conversaciones" style="margin-bottom:10px;width:100%">
     <div id="cvLista" style="display:grid;gap:10px"></div>
     <h1 style="margin-top:28px">Opiniones</h1>
     <p id="opResumen" style="margin:6px 0 12px"></p>
@@ -115,13 +115,13 @@ async function cargarOpiniones() {
 let convs = [];
 function pintarConversaciones() {
   const q = $("cvBuscar").value.trim().toLowerCase();
-  const filas = convs.filter((c) => !q || c.mensajes.some((m) => m.t.toLowerCase().includes(q)));
+  const filas = convs.filter((c) => !q || (c.cliente || "").toLowerCase().includes(q) || c.mensajes.some((m) => m.t.toLowerCase().includes(q)));
   $("cvResumen").textContent = convs.length ? `${convs.length} conversaciones de los últimos 90 días (se borran solas después).` : "Todavía no hay conversaciones guardadas.";
   $("cvLista").replaceChildren(...filas.map((c) => {
     const d = document.createElement("details"); d.className = "card";
     const s = document.createElement("summary"); s.style.cursor = "pointer";
     const primera = (c.mensajes.find((m) => m.r === "u" && !/^Hola/.test(m.t)) || c.mensajes.find((m) => m.r === "u") || { t: "" }).t;
-    s.textContent = `${new Date(c.actualizada).toLocaleString("es-EC", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${c.mensajes.length} mensajes · ${primera.slice(0, 80)}`;
+    s.textContent = `${c.cliente ? c.cliente + " · " : ""}${new Date(c.actualizada).toLocaleString("es-EC", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${c.mensajes.length} mensajes · ${primera.slice(0, 80)}`;
     d.appendChild(s);
     d.addEventListener("toggle", () => {
       if (!d.open || d.dataset.ok) return; d.dataset.ok = 1;

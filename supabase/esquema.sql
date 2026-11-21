@@ -49,6 +49,7 @@ grant all on public.arcana_opiniones to service_role;
 create table if not exists public.arcana_conversaciones (
   consulta text primary key,
   dispositivo text not null,
+  cliente text,
   mensajes jsonb not null default '[]',
   creada timestamptz not null default now(),
   actualizada timestamptz not null default now()
@@ -56,3 +57,4 @@ create table if not exists public.arcana_conversaciones (
 create index if not exists arcana_conversaciones_actualizada_idx on public.arcana_conversaciones (actualizada desc);
 alter table public.arcana_conversaciones enable row level security;
 grant all on public.arcana_conversaciones to service_role;
+alter table public.arcana_conversaciones add column if not exists cliente text;

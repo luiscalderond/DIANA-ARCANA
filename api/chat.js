@@ -46,8 +46,13 @@ function perfilValido(p) {
   const limpio = (x, n) => String(x || "").replace(/[\[\]{}<>\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
   const nombre = limpio(p.nombre, 80), fecha = limpio(p.fecha, 20), ciudad = limpio(p.ciudad, 60), relacion = limpio(p.relacion, 40);
   if (nombre.length < 2 || ciudad.length < 2 || !buscarFecha(fecha)) return null;
-  const otros = Array.isArray(p.otros) ? p.otros.slice(0, 6).map((o) => perfilValido({ ...o, otros: null })).filter(Boolean) : [];
-  return { nombre, fecha, ciudad, ...(relacion ? { relacion } : {}), ...(otros.length ? { otros } : {}) };
+  const otros = Array.isArray(p.otros) ? p.otros.slice(0, 6).map((o) => perfilValido({ ...o, otros: null, lecturas: null })).filter(Boolean) : [];
+  const lecturas = Array.isArray(p.lecturas) ? p.lecturas.slice(0, 5).map((l) => ({ f: limpio(l && l.f, 10), t: limpio(l && l.t, 60), c: limpio(l && l.c, 200), x: limpio(l && l.x, 400) })).filter((l) => l.t) : [];
+  return { nombre, fecha, ciudad, ...(relacion ? { relacion } : {}), ...(otros.length ? { otros } : {}), ...(lecturas.length ? { lecturas } : {}) };
+}
+function notaLecturas(lecturas) {
+  if (!lecturas || !lecturas.length) return "";
+  return " Sus lecturas anteriores (de la más reciente a la más antigua): " + lecturas.map((l) => `${l.f}: ${l.t}, cartas ${l.c}. ${l.x}`).join(" // ") + ".";
 }
 function notaOtros(otros) {
   if (!otros || !otros.length) return "";
@@ -65,7 +70,7 @@ function limpiarHistorial(mensajes, perfil) {
   while (out.length && out[0].role === "assistant") out.shift();
   if (!out.length || out[out.length - 1].role !== "user") return null;
   // La conversación arranca con el saludo fijo de Arcana que la clienta ve en pantalla.
-  if (perfil) return [{ role: "user", content: `Hola. [Datos guardados de esta clienta en su equipo: ${perfil.nombre}, nacida el ${perfil.fecha} en ${perfil.ciudad}. Ya te los dio en una visita anterior: no se los vuelvas a pedir.${notaOtros(perfil.otros)}]` + notaNatal(perfil.fecha) }, { role: "assistant", content: saludoDe(perfil) }, ...out];
+  if (perfil) return [{ role: "user", content: `Hola. [Datos guardados de esta clienta en su equipo: ${perfil.nombre}, nacida el ${perfil.fecha} en ${perfil.ciudad}. Ya te los dio en una visita anterior: no se los vuelvas a pedir.${notaOtros(perfil.otros)}${notaLecturas(perfil.lecturas)}]` + notaNatal(perfil.fecha) }, { role: "assistant", content: saludoDe(perfil) }, ...out];
   return [{ role: "user", content: "Hola" }, { role: "assistant", content: SALUDO }, ...out];
 }
 
@@ -300,7 +305,7 @@ export default async function handler(req, res) {
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
     // Guarda la conversación (texto, sin fotos ni notas internas) para que Diana la revise. Se avisa en pantalla.
-    if (hayBaseDeDatos()) await guardarConversacion(body.consulta, body.dispositivo, textoParaGuardar(body.messages, text)).catch((e) => console.error("Conversación", e));
+    if (hayBaseDeDatos()) await guardarConversacion(body.consulta, body.dispositivo, textoParaGuardar(body.messages, text), perfil ? perfil.nombre : (perfilNuevo && perfilNuevo.para === "titular" ? perfilNuevo.nombre : null)).catch((e) => console.error("Conversación", e));
     return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, ...(bloqueo || {}) });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });

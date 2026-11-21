@@ -97,6 +97,12 @@ textarea,button{font:inherit}
 .lc-copiar{background:transparent;color:var(--ink);border:1px solid rgba(242,184,200,.7)}
 .lectura-card .tools{justify-content:center;padding:14px 14px 18px;margin:0}
 .lectura-card .tools .linkbtn{border:1px solid rgba(217,180,106,.5);border-radius:999px;padding:9px 16px;font-size:14px}
+.usuarias{display:grid;gap:8px;margin-top:12px}
+.usuaria{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.usuarias .elige{flex:1;text-align:left;border:1px solid var(--candle);background:rgba(217,180,106,.1);color:#f6e7bf;border-radius:999px;padding:10px 16px;font:600 15px var(--body);cursor:pointer}
+.usuarias .elige.nueva{background:none;border-style:dashed}
+.linkbtn.borrar{color:var(--rose);font-size:12.5px}
+.opciones-usuaria{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px}
 .msg.sugerencia .linkbtn{margin-top:8px;border:1px solid rgba(217,180,106,.6);border-radius:999px;padding:8px 14px;font-size:14px}
 .linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
 .spread{align-self:stretch;display:flex;flex-wrap:wrap;gap:12px 10px;justify-content:center;padding:14px 10px 16px;border-radius:18px;position:relative;
@@ -311,20 +317,62 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 const SALUDO = "Te doy la bienvenida a este espacio sagrado. Soy Arcana, la asistente virtual de Diana. Las cartas y las estrellas guardan mensajes para quien llega con el corazón abierto. Para abrir tu lectura y sintonizar con tu energía, dime tus nombres y apellidos completos, tu fecha de nacimiento y la ciudad donde naciste.";
 const $ = (id) => document.getElementById(id);
 const log = $("log"), box = $("box"), sendBtn = $("send"), micBtn = $("mic"), photoBtn = $("photoBtn"), photo = $("photo");
-let perfil = null; // datos que la clienta dejó en este equipo: { nombre, fecha, ciudad }
-try { perfil = JSON.parse(localStorage.getItem("arcana-perfil") || "null"); } catch {}
-const saludoDe = (p) => `Qué alegría tenerte de nuevo, ${p.nombre.split(/\s+/)[0]}. Las cartas te estaban esperando. Ya tengo tus datos guardados. Cuéntame, ¿la consulta de hoy es para ti o para otra persona?`;
+const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+// Usuarias de este equipo: cada una con sus datos, las personas por quienes consulta y sus lecturas anteriores.
+// usuarios = [{ id, nombre, fecha, ciudad, otros:[...], lecturas:[{ f, t, c, x }] }]; perfil = la usuaria que consulta ahora.
+let usuarios = [], perfil = null;
+try {
+  usuarios = JSON.parse(localStorage.getItem("arcana-usuarios") || "[]");
+  const viejo = JSON.parse(localStorage.getItem("arcana-perfil") || "null"); // versión anterior: un solo perfil
+  if (viejo && viejo.nombre && !usuarios.length) { usuarios = [{ id: nuevoId(), ...viejo, lecturas: [] }]; localStorage.removeItem("arcana-perfil"); }
+  const act = localStorage.getItem("arcana-usuaria-actual");
+  perfil = usuarios.find((u) => u.id === act) || (usuarios.length === 1 ? usuarios[0] : null);
+} catch { usuarios = []; }
+function guardarUsuarios() {
+  try { localStorage.setItem("arcana-usuarios", JSON.stringify(usuarios)); perfil ? localStorage.setItem("arcana-usuaria-actual", perfil.id) : localStorage.removeItem("arcana-usuaria-actual"); } catch {}
+}
+const primerNombre = (p) => p.nombre.split(/\s+/)[0];
+const saludoDe = (p) => p.lecturas && p.lecturas.length
+  ? `Qué alegría tenerte de nuevo, ${primerNombre(p)}. La última vez abrimos la tirada «${p.lecturas[0].t}» y las cartas dejaron algo latiendo. ¿Quieres que retomemos donde quedamos, o hoy consultas algo nuevo, para ti o para otra persona?`
+  : `Qué alegría tenerte de nuevo, ${primerNombre(p)}. Las cartas te estaban esperando. Ya tengo tus datos guardados. Cuéntame, ¿la consulta de hoy es para ti o para otra persona?`;
 function guardarPerfil(p) {
   const { para, ...datos } = p;
   if (para === "otra") {
     if (!perfil) return; // sin datos de la titular no se guarda a terceros
     const otros = (perfil.otros || []).filter((o) => o.nombre.toLowerCase() !== datos.nombre.toLowerCase());
-    perfil = { ...perfil, otros: [datos, ...otros].slice(0, 6) };
-  } else perfil = { ...datos, otros: perfil && perfil.otros ? perfil.otros : undefined };
-  try { localStorage.setItem("arcana-perfil", JSON.stringify(perfil)); } catch {}
+    perfil.otros = [datos, ...otros].slice(0, 6);
+  } else if (perfil) Object.assign(perfil, datos);
+  else { perfil = { id: nuevoId(), ...datos, otros: [], lecturas: [] }; usuarios.push(perfil); }
+  guardarUsuarios();
+}
+// Después de cada lectura se guarda un resumen corto para retomarla en la próxima visita.
+function recordarLectura(texto) {
+  if (!perfil || !lectura) return;
+  const lineas = String(texto).split("\n").map((l) => l.trim()).filter(Boolean);
+  const titulos = lineas.map((l, i) => (/^✦/.test(l) ? i : -1)).filter((i) => i >= 0);
+  const revel = titulos.length >= 3 && lineas[titulos[2] + 1] ? lineas[titulos[2] + 1].split(/(?<=[.!?])\s/)[0] : lineas.find((l) => !/^✦/.test(l)) || "";
+  const gancho = (lineas.find((l) => /^🔮/.test(l)) || "").replace(/^🔮\s*/, "");
+  const r = { f: new Date().toISOString().slice(0, 10), t: lectura.nombre || "tirada", c: lectura.cartas ? lectura.cartas.map((c) => c.carta + (c.invertida ? " (inv.)" : "")).join(", ") : "con su propio mazo", x: (revel.slice(0, 200) + (gancho ? " | Quedó abierto: " + gancho.slice(0, 160) : "")).trim() };
+  perfil.lecturas = [r, ...(perfil.lecturas || [])].slice(0, 8);
+  guardarUsuarios();
+}
+function perfilParaEnviar() {
+  if (!perfil) return undefined;
+  const { nombre, fecha, ciudad, otros, lecturas } = perfil;
+  return { nombre, fecha, ciudad, otros, lecturas: (lecturas || []).slice(0, 5) };
+}
+function reiniciarChat() { callar(); historial.length = 0; consulta = nuevoId(); started = false; clearPhoto(); log.replaceChildren(); }
+function borrarUsuaria(u) {
+  usuarios = usuarios.filter((x) => x.id !== u.id); if (perfil && perfil.id === u.id) perfil = null;
+  guardarUsuarios();
+}
+// Botón que pide confirmación con un segundo toque (sin ventanas emergentes).
+function botonBorrar(texto, alConfirmar) {
+  const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn borrar"; b.textContent = texto;
+  b.onclick = (e) => { e.stopPropagation(); if (b.dataset.seguro) return alConfirmar(); b.dataset.seguro = 1; b.textContent = "¿Seguro? Toca otra vez para borrar"; setTimeout(() => { delete b.dataset.seguro; b.textContent = texto; }, 4000); };
+  return b;
 }
 const historial = [];   // {role, content} que se envía al servidor (sin el saludo)
-const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 let dispositivo;
 try { dispositivo = localStorage.getItem("arcana-dispositivo"); if (!dispositivo) { dispositivo = nuevoId(); localStorage.setItem("arcana-dispositivo", dispositivo); } } catch { dispositivo = nuevoId(); }
 let consulta = nuevoId();
@@ -1007,13 +1055,33 @@ function begin(conVoz) {
   if (window.Musica) Musica.iniciar();
   if (started) return;
   started = true;
+  // Dos o más usuarias en este equipo: primero elige quién consulta.
+  if (usuarios.length >= 2 && !begin.elegida) {
+    const d = addMsg("a elegir", "Te doy la bienvenida a este espacio sagrado. ¿Quién consulta hoy?");
+    const lista = document.createElement("div"); lista.className = "usuarias";
+    for (const u of usuarios) {
+      const fila = document.createElement("div"); fila.className = "usuaria";
+      const b = document.createElement("button"); b.type = "button"; b.className = "elige"; b.textContent = "✦ " + u.nombre;
+      b.onclick = () => { perfil = u; guardarUsuarios(); begin.elegida = true; reiniciarChat(); begin(conVoz); };
+      fila.append(b, botonBorrar("Borrar", () => { borrarUsuaria(u); reiniciarChat(); begin(false); }));
+      lista.appendChild(fila);
+    }
+    const nueva = document.createElement("button"); nueva.type = "button"; nueva.className = "elige nueva"; nueva.textContent = "+ Soy otra persona";
+    nueva.onclick = () => { perfil = null; guardarUsuarios(); begin.elegida = true; reiniciarChat(); begin(conVoz); };
+    lista.appendChild(nueva); d.appendChild(lista);
+    pintarFaq(); return;
+  }
+  begin.elegida = false;
   const saludo = perfil && perfil.nombre ? saludoDe(perfil) : SALUDO;
   const d = addMsg("a", saludo); addReplay(d, saludo);
   if (perfil && perfil.nombre) {
-    const no = document.createElement("button"); no.type = "button"; no.className = "linkbtn"; no.style.marginLeft = "12px";
-    no.textContent = `¿No eres ${perfil.nombre.split(/\s+/)[0]}? Empezar con otros datos`;
-    no.onclick = () => { perfil = null; try { localStorage.removeItem("arcana-perfil"); } catch {} callar(); historial.length = 0; consulta = nuevoId(); started = false; log.replaceChildren(); begin(false); };
-    d.appendChild(no);
+    const opciones = document.createElement("div"); opciones.className = "opciones-usuaria";
+    const no = document.createElement("button"); no.type = "button"; no.className = "linkbtn";
+    no.textContent = `¿No eres ${primerNombre(perfil)}? Entrar como otra persona`;
+    no.onclick = () => { perfil = null; guardarUsuarios(); begin.elegida = true; reiniciarChat(); begin(false); };
+    const yo = perfil;
+    opciones.append(no, botonBorrar("Borrar mis datos de este equipo", () => { borrarUsuaria(yo); begin.elegida = usuarios.length < 2; reiniciarChat(); begin(false); }));
+    d.appendChild(opciones);
   }
   if (conVoz) hablar(saludo);
   pintarFaq();
@@ -1048,7 +1116,7 @@ async function send(auto) {
   try {
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dispositivo, consulta, perfil: perfil || undefined, ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
+      body: JSON.stringify({ dispositivo, consulta, perfil: perfilParaEnviar(), ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");
@@ -1066,7 +1134,7 @@ async function send(auto) {
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
     if (img) lectura = { nombre: "Tu tirada con tu propio mazo", cartas: null, foto: img.url, textos: [] };
-    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) { botonPdf(bubble); if (!lectura.opinion) { lectura.opinion = true; mostrarOpinion(bubble); } if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
+    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) { botonPdf(bubble); if (!lectura.opinion) { lectura.opinion = true; mostrarOpinion(bubble); recordarLectura(j.text); } if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
     if (j.suscripcion) mostrarSuscripcion(j);
@@ -1163,7 +1231,7 @@ function mostrarSuscripcion(datos, cardExistente) {
 
 $("nueva").onclick = () => {
   callar(); historial.length = 0; consulta = nuevoId(); started = false; clearPhoto();
-  log.replaceChildren(); begin(true); box.focus();
+  log.replaceChildren(); begin.elegida = false; begin(true); box.focus();
 };
 
 $("start").onclick = () => { begin(true); box.focus(); };
