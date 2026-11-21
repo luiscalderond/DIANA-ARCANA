@@ -409,11 +409,11 @@ function enlaceWhatsapp(datos, referencia, nombre) {
   return el("a", { class: "btn wa", href: `https://wa.me/${datos.whatsapp}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", text: "Enviar comprobante por WhatsApp" });
 }
 function pantallaDeposito(card, datos, referencia, nombre) {
-  const dia = String(referencia).startsWith("DD-");
-  const monto = dia ? (datos.precioDia ?? 2) : datos.precio;
+  const ref = String(referencia), dia = ref.startsWith("DD-"), sem = ref.startsWith("DS-");
+  const monto = dia ? (datos.precioDia ?? 1.99) : sem ? (datos.precioSemana ?? 4.99) : 4.99;
   card.replaceChildren(
     el("h2", { text: "¡Gracias! Solo falta tu depósito" }),
-    el("p", { text: `Deposita o transfiere $${monto} a esta cuenta y envía el comprobante. Diana activará ${dia ? "tu pase de 24 horas ilimitadas" : "tu suscripción por 30 días"} al confirmarlo.` }),
+    el("p", { text: `Deposita o transfiere $${monto} a esta cuenta y envía el comprobante. Diana activará ${dia ? `tu pase de 24 horas (hasta ${datos.tiradasDia ?? 4} tiradas)` : sem ? `tu plan semanal (hasta ${datos.tiradasSemana ?? 10} tiradas en 7 días)` : "tu suscripción"} al confirmarlo.` }),
     el("div", { class: "cuenta", text: datos.cuenta }),
     el("p", { text: `Tu código de referencia: ${referencia}. Escríbelo en la transferencia o en tu mensaje.` }),
     enlaceWhatsapp(datos, referencia, nombre),
@@ -452,8 +452,8 @@ function mostrarSuscripcion(datos, cardExistente) {
       el("label", {}, "Teléfono (WhatsApp)", el("input", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567" })),
       el("label", {}, "Email", el("input", { type: "email", name: "email", required: "", autocomplete: "email" })),
       el("fieldset", { class: "planes" }, el("legend", { text: "Elige tu plan" }),
-        el("label", { class: "plan-op" }, el("input", { type: "radio", name: "plan", value: "dia", checked: "" }), el("span", {}, el("b", { text: `Pase de 24 horas · $${datos.precioDia ?? 2}` }), el("small", { text: "Tiradas ilimitadas durante un día" }))),
-        el("label", { class: "plan-op" }, el("input", { type: "radio", name: "plan", value: "mensual" }), el("span", {}, el("b", { text: `Mensual · $${datos.precio}` }), el("small", { text: "Consultas ilimitadas por 30 días" })))),
+        el("label", { class: "plan-op" }, el("input", { type: "radio", name: "plan", value: "dia", checked: "" }), el("span", {}, el("b", { text: `Pase de 24 horas · $${datos.precioDia ?? 1.99}` }), el("small", { text: `Hasta ${datos.tiradasDia ?? 4} tiradas durante un día` }))),
+        el("label", { class: "plan-op" }, el("input", { type: "radio", name: "plan", value: "semanal" }), el("span", {}, el("b", { text: `Semanal · $${datos.precioSemana ?? 4.99}` }), el("small", { text: `Hasta ${datos.tiradasSemana ?? 10} tiradas en 7 días · el que más rinde` })))),
       el("label", { class: "check" }, el("input", { type: "checkbox", name: "acepto", required: "" }), "Autorizo a Diana Arcana a usar estos datos solo para gestionar mi suscripción y contactarme."),
       err, el("button", { class: "btn", type: "submit", text: "Continuar" }));
     f.onsubmit = async (e) => {
@@ -469,8 +469,8 @@ function mostrarSuscripcion(datos, cardExistente) {
     const ya = el("button", { class: "linkbtn", type: "button", text: "Ya soy suscriptora" });
     ya.onclick = () => formularioAcceso(card, datos);
     card.replaceChildren(
-      el("h2", { text: "Tus consultas gratis ya se usaron" }),
-      el("p", { text: "Sigue consultando con Arcana sin límite: tarot, carta astral, rituales y registros akáshicos." }), f, ya);
+      el("h2", { text: datos.agotado ? "Tu plan ya se completó" : "Tus consultas gratis ya se usaron" }),
+      el("p", { text: datos.agotado ? "Usaste todas las tiradas de tu plan. Renueva para seguir consultando con Arcana: tarot, carta astral, rituales y registros akáshicos." : "Sigue consultando con Arcana: tarot, carta astral, rituales y registros akáshicos." }), f, ya);
   }
   if (!cardExistente) { log.querySelectorAll(".paywall").forEach((x) => x.remove()); log.appendChild(card); log.scrollTop = log.scrollHeight; }
 }

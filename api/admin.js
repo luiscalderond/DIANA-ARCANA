@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     if (!s) return res.status(404).json({ error: "No existe esa suscriptora." });
     if (b.accion === "activar") {
       const base = s.activa_hasta && new Date(s.activa_hasta) > new Date() ? new Date(s.activa_hasta) : new Date();
-      const plan = b.plan === "dia" || b.plan === "mensual" ? b.plan : planDeReferencia(s.referencia);
+      const plan = PLANES[b.plan] ? b.plan : planDeReferencia(s.referencia);
       base.setTime(base.getTime() + PLANES[plan].horas * 3600 * 1000);
       await db.actualizarSuscriptora(s.id, { estado: "activa", activa_hasta: base.toISOString() });
     } else if (b.accion === "desactivar") {

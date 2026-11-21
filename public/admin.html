@@ -65,15 +65,15 @@ function pintar() {
   const n = (e) => datos.filter((s) => estado(s) === e).length;
   $("resumen").textContent = `${n("activa")} activas · ${n("pendiente")} pendientes · ${n("vencida")} vencidas`;
   $("lista").replaceChildren(...filas.map((s) => {
-    const e = estado(s), dia = String(s.referencia).startsWith("DD-"), c = document.createElement("div"); c.className = "card";
+    const e = estado(s), ref = String(s.referencia), dia = ref.startsWith("DD-"), sem = ref.startsWith("DS-"), c = document.createElement("div"); c.className = "card";
     const t = document.createElement("div"); t.className = "fila";
     const b = document.createElement("b"); b.textContent = s.nombre;
-    const est = document.createElement("span"); est.className = "est " + e; est.textContent = e + (e === "activa" ? " hasta " + fecha(s.activa_hasta) + (dia ? " " + new Date(s.activa_hasta).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }) : "") : "");
+    const est = document.createElement("span"); est.className = "est " + e; est.textContent = e + (e === "activa" ? " hasta " + fecha(s.activa_hasta) + (dia || sem ? " " + new Date(s.activa_hasta).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }) : "") : "");
     t.append(b, est);
     const info = document.createElement("p");
-    info.textContent = `${dia ? "Pase 24 horas ($2)" : "Mensual ($4.99)"} · Ref. ${s.referencia} · ${s.telefono} · ${s.email} · pidió el ${fecha(s.creada)}`;
+    info.textContent = `${dia ? "Pase 24 horas ($1.99, 4 tiradas)" : sem ? "Semanal ($4.99, 10 tiradas)" : "Mensual antiguo ($4.99)"} · Ref. ${s.referencia} · ${s.telefono} · ${s.email} · pidió el ${fecha(s.creada)}`;
     const acc = document.createElement("div"); acc.className = "fila";
-    const act = document.createElement("button"); act.textContent = dia ? (e === "activa" ? "Sumar 24 horas" : "Activar 24 horas") : (e === "activa" ? "Sumar 30 días" : "Activar 30 días");
+    const act = document.createElement("button"); const periodo = dia ? "24 horas" : sem ? "7 días" : "30 días"; act.textContent = (e === "activa" ? "Renovar " : "Activar ") + periodo;
     act.onclick = () => accion(s.id, "activar", act);
     acc.append(act);
     if (e === "activa") { const des = document.createElement("button"); des.className = "sec"; des.textContent = "Desactivar"; des.onclick = () => accion(s.id, "desactivar", des); acc.append(des); }

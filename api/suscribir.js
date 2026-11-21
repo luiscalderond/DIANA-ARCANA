@@ -1,7 +1,7 @@
 // POST /api/suscribir — guarda la solicitud de suscripción y devuelve los datos para depositar.
 import { randomInt } from "node:crypto";
 import * as db from "../lib/db.js";
-import { idValido, leerCuerpo, datosDeposito, PLANES, PRECIO_MENSUAL, PRECIO_DIA } from "../lib/acceso.js";
+import { idValido, leerCuerpo, datosDeposito, PLANES } from "../lib/acceso.js";
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 
@@ -21,10 +21,10 @@ export default async function handler(req, res) {
   if (!idValido(b.dispositivo)) return res.status(400).json({ error: "Recarga la página e intenta de nuevo." });
 
   try {
-    const plan = b.plan === "dia" ? "dia" : "mensual";
+    const plan = b.plan === "semanal" ? "semanal" : "dia";
     const referencia = PLANES[plan].prefijo + String(randomInt(100000, 999999));
     await db.crearSolicitud({ nombre, telefono, email, dispositivo: b.dispositivo, referencia });
-    return res.status(200).json({ referencia, ...datosDeposito(), plan, monto: plan === "dia" ? PRECIO_DIA : PRECIO_MENSUAL });
+    return res.status(200).json({ referencia, ...datosDeposito(), plan, monto: PLANES[plan].precio });
   } catch (e) {
     console.error("Suscribir", e);
     return res.status(500).json({ error: "No pude guardar tu solicitud. Intenta de nuevo." });

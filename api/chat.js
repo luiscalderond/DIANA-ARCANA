@@ -61,12 +61,14 @@ export default async function handler(req, res) {
     if (cobro) return cobro;
     try { cobro = await usarConsulta({ dispositivo: body.dispositivo, ip }); }
     catch (e) { console.error("Acceso", e); cobro = { permitido: false, error: true }; }
-    if (!cobro.permitido && !cobro.error) bloqueo = { suscripcion: true, pendiente: cobro.pendiente, ...datosDeposito() };
+    if (!cobro.permitido && !cobro.error) bloqueo = { suscripcion: true, pendiente: cobro.pendiente, agotado: cobro.agotado || undefined, ...datosDeposito() };
     return cobro;
   }
-  const NO_DISPONIBLE = "BLOQUEADO: la persona ya usó sus consultas gratis y no tiene un plan activo. No hagas la tirada ni el servicio. Dile con calidez, en dos o tres frases, que sus consultas gratis terminaron y que en pantalla aparecieron dos planes para seguir: el pase de 24 horas ilimitadas o la suscripción mensual. Invítala a elegir uno para continuar justo donde quedaron.";
+  const NO_DISPONIBLE_GRATIS = "BLOQUEADO: la persona ya usó sus consultas gratis y no tiene un plan activo. No hagas la tirada ni el servicio. Dile con calidez, en dos o tres frases, que sus consultas gratis terminaron y que en pantalla aparecieron dos planes para seguir: el pase de 24 horas (hasta 4 tiradas) o el plan semanal (hasta 10 tiradas). Invítala a elegir uno para continuar justo donde quedaron.";
+  const NO_DISPONIBLE_AGOTADO = "BLOQUEADO: la persona ya usó todas las tiradas de su plan actual. No hagas la tirada ni el servicio. Agradécele con calidez su confianza y dile, en dos o tres frases, que en pantalla aparecieron los planes para renovar: el pase de 24 horas (hasta 4 tiradas) o el semanal (hasta 10 tiradas, el que más le rinde).";
+  const noDisponible = () => (cobro && cobro.agotado ? NO_DISPONIBLE_AGOTADO : NO_DISPONIBLE_GRATIS);
   const ERROR_ACCESO = "Error: no pude verificar sus consultas disponibles en este momento. Pídele que intente de nuevo en un momento.";
-  const notaCobro = (c) => c.suscrita ? "" : c.restantes === 0 ? " Nota: esta es su última consulta gratis; puedes mencionarlo con suavidad al final." : c.restantes ? ` Nota: le quedan ${c.restantes} consultas gratis después de esta.` : "";
+  const notaCobro = (c) => c.suscrita ? (c.restantes === 0 ? " Nota: esta es la última tirada de su plan; al final puedes mencionarlo con suavidad." : c.restantes != null ? ` Nota: le quedan ${c.restantes} tiradas en su plan después de esta.` : "") : c.restantes === 0 ? " Nota: esta es su última consulta gratis; puedes mencionarlo con suavidad al final." : c.restantes ? ` Nota: le quedan ${c.restantes} consultas gratis después de esta.` : "";
   const textoHistorial = mensajes.slice(-12).map((m) => (typeof m.content === "string" ? m.content : m.content.map((b) => b.text || "").join(" "))).join("\n");
 
   // Foto de la tirada: se adjunta al último mensaje del usuario.
@@ -102,7 +104,7 @@ export default async function handler(req, res) {
       try {
         const c = await cobrar();
         if (c.error) return ERROR_ACCESO;
-        if (!c.permitido) return NO_DISPONIBLE;
+        if (!c.permitido) return noDisponible();
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return "Error: la fecha debe ser AAAA-MM-DD.";
         const sinHora = !/^\d{1,2}:\d{2}$/.test(hora || "");
         const p = await buscarLugar(lugar);
@@ -131,7 +133,7 @@ export default async function handler(req, res) {
         if (!/Plan mostrado/.test(textoHistorial + memo)) {
           const c = await cobrar();
           if (c.error) return ERROR_ACCESO;
-          if (!c.permitido) return NO_DISPONIBLE;
+          if (!c.permitido) return noDisponible();
         }
         baraja = barajar(tipo);
         const n = baraja.posiciones.length;
@@ -159,7 +161,7 @@ export default async function handler(req, res) {
       try {
         const c = await cobrar();
         if (c.error) return ERROR_ACCESO;
-        if (!c.permitido) return NO_DISPONIBLE;
+        if (!c.permitido) return noDisponible();
         indice = plan(tipo, mazo_propio);
         memo += `Plan mostrado (${indice.nombre}, ${mazo_propio ? "mazo propio" : "tirada virtual"}): ${indice.pasos.map((p, i) => i + 1 + " " + p.titulo).join(", ")}\n`;
         return `Índice mostrado en pantalla: ${indice.pasos.map((p, i) => `Paso ${i + 1}: ${p.titulo}`).join("; ")}.` + notaCobro(c);
@@ -181,7 +183,7 @@ export default async function handler(req, res) {
     run: async ({ servicio }) => {
       const c = await cobrar();
       if (c.error) return ERROR_ACCESO;
-      if (!c.permitido) return NO_DISPONIBLE;
+      if (!c.permitido) return noDisponible();
       memo += `Servicio iniciado: ${servicio}\n`;
       return "Listo, puedes continuar con el servicio." + notaCobro(c);
     },
@@ -210,7 +212,7 @@ export default async function handler(req, res) {
 
   try {
     const final = await client.beta.messages.toolRunner({
-      model: "claude-opus-5-5",
+      model: "claude-sonnet-5-5",
       max_tokens: 16000,
       max_iterations: 5,
       betas: ["server-side-fallback-2026-07-01"],
