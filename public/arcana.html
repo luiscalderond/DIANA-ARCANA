@@ -81,6 +81,20 @@ textarea,button{font:inherit}
 .lc-gancho .cta{display:inline-block;margin-top:10px;padding:8px 16px;border-radius:999px;background:var(--candle);color:var(--night);font-weight:700;font-size:14px}
 @keyframes brillo{50%{box-shadow:0 0 38px rgba(217,180,106,.45)}}
 @media (prefers-reduced-motion:reduce){.lc-gancho{animation:none}}
+.lc-diana{display:grid;grid-template-columns:54px 1fr;gap:14px;margin:18px 14px 0;padding:16px;border-radius:16px;background:linear-gradient(160deg,rgba(201,138,154,.12),rgba(255,255,255,.03));border:1px solid rgba(201,138,154,.35)}
+.lc-mono{width:54px;height:54px;border-radius:50% 50% 12px 12px;display:grid;place-items:center;font-family:var(--display);font-size:30px;font-weight:600;color:#2a1a10;background:radial-gradient(circle at 35% 30%,#fff1c4,#d9b46a 55%,#9c7330);box-shadow:0 6px 16px rgba(0,0,0,.4)}
+.lc-diana h4,.lc-ref h4{margin:2px 0 4px;font-family:var(--display);font-size:21px;color:#f6dfa0;font-weight:600}
+.lc-diana p,.lc-ref p{margin:6px 0 0;font-size:14.5px;line-height:1.55;color:var(--ink)}
+.lc-diana .lc-cita{font-family:var(--display);font-style:italic;font-size:17px;color:#f2b8c8}
+.lc-link{display:inline-block;margin-top:8px;color:var(--candle);font-weight:700;font-size:14px;text-decoration:none}
+.lc-ref{margin:14px 14px 0;padding:18px 16px;border-radius:16px;text-align:center;background:radial-gradient(120% 100% at 50% 0%,rgba(242,184,200,.22),rgba(58,16,52,.6));border:1px dashed rgba(242,184,200,.6)}
+.lc-codigo{display:inline-flex;align-items:center;gap:10px;margin-top:12px;padding:8px 16px;border-radius:999px;background:rgba(22,18,31,.75);border:1px solid var(--candle)}
+.lc-codigo span{font-family:var(--label);font-size:10px;letter-spacing:2.5px;color:var(--mist);text-transform:uppercase}
+.lc-codigo b{font-family:var(--label);font-size:17px;letter-spacing:3px;color:#f6dfa0}
+.lc-ref-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.lc-wa,.lc-copiar{flex:1 1 140px;padding:11px 14px;border-radius:999px;font:700 14px var(--body);cursor:pointer;text-decoration:none;text-align:center}
+.lc-wa{background:#25d366;color:#0b2a17;border:none}
+.lc-copiar{background:transparent;color:var(--ink);border:1px solid rgba(242,184,200,.7)}
 .lectura-card .tools{justify-content:center;padding:14px 14px 18px;margin:0}
 .lectura-card .tools .linkbtn{border:1px solid rgba(217,180,106,.5);border-radius:999px;padding:9px 16px;font-size:14px}
 .linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
@@ -349,6 +363,27 @@ function pintarLectura(el, text) {
     g.onclick = () => { g.disabled = true; send({ texto: "Sí, quiero revelar eso: " + gancho, visible: "🔮 Sí, quiero revelarlo" }); };
     el.appendChild(g);
   }
+  // Conoce a Diana
+  const di = mk("section", "lc-diana"), mono = mk("div", "lc-mono", "D"), dtx = mk("div");
+  dtx.append(mk("span", "lc-kicker", "Detrás de Arcana"), mk("h4", null, "Conoce a Diana"),
+    mk("p", null, "Diana es tarotista y guía espiritual en Quito. Creó a Arcana para acompañarte a cualquier hora, con su forma de leer y su cuidado. Las limpiezas energéticas las hace ella en persona."),
+    mk("p", "lc-cita", "“Las cartas no deciden por ti: iluminan el camino para que elijas con el corazón.”"));
+  const ver = mk("a", "lc-link", "Conoce sus servicios →"); ver.href = "/#servicios";
+  dtx.appendChild(ver); di.append(mono, dtx); el.appendChild(di);
+  // Regala lecturas: programa de referidas
+  const url = `${location.origin}/?ref=${miCodigo}`, msj = `Te regalo 2 consultas gratis con Arcana, la asistente de tarot de Diana ✨ Entra aquí: ${url}`;
+  const rf = mk("section", "lc-ref");
+  rf.append(mk("span", "lc-kicker", "Regala luz"), mk("h4", null, "Regala lecturas a tus amigos"),
+    mk("p", null, "Comparte tu enlace: tus amigos reciben 2 consultas gratis y, cuando uno active su plan, tú ganas 1 tirada de regalo."));
+  const cod = mk("div", "lc-codigo"); cod.append(mk("span", null, "Tu código"), mk("b", null, miCodigo)); rf.appendChild(cod);
+  const bts = mk("div", "lc-ref-btns");
+  const wa = mk("a", "lc-wa", "Compartir por WhatsApp"); wa.href = "https://wa.me/?text=" + encodeURIComponent(msj); wa.target = "_blank"; wa.rel = "noopener";
+  const cp = mk("button", "lc-copiar", "Copiar enlace"); cp.type = "button";
+  cp.onclick = async () => {
+    try { if (navigator.share) await navigator.share({ title: "Diana Arcana", text: msj, url }); else { await navigator.clipboard.writeText(msj); cp.textContent = "¡Enlace copiado!"; } }
+    catch { try { await navigator.clipboard.writeText(msj); cp.textContent = "¡Enlace copiado!"; } catch {} }
+  };
+  bts.append(wa, cp); rf.appendChild(bts); el.appendChild(rf);
 }
 function pintarTexto(el, text) {
   if ((String(text).match(/^\s*✦\s+\S/gm) || []).length >= 2) return pintarLectura(el, text);
