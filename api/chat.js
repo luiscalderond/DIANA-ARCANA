@@ -2,11 +2,24 @@
 // La clave ANTHROPIC_API_KEY vive solo en Vercel (variables de entorno), nunca en el navegador.
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
-import { SISTEMA, SALUDO } from "../lib/prompt.js";
+import { SISTEMA, SALUDO, saludoDe } from "../lib/prompt.js";
+import { buscarFecha, signoSolar, numeroDeVida } from "../lib/numerologia.js";
 import { notaNatal } from "../lib/numerologia.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
 import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
 import { usarConsulta, revisarMensaje, barajaSinCobro, idValido, datosDeposito } from "../lib/acceso.js";
+import { hayBaseDeDatos, guardarConversacion } from "../lib/db.js";
+
+// Texto limpio para guardar: sin notas internas, sin fotos, con tope de tamaño.
+function textoParaGuardar(historial, respuesta) {
+  const lista = (Array.isArray(historial) ? historial : []).slice(-60).map((m) => {
+    let t = typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter((b) => b && b.type === "text").map((b) => b.text).join("\n") : "";
+    t = t.split("\n\n[Nota interna de Arcana")[0].replace(/^\[Aquí envié la foto de mi tirada\.[^\]]*\]\s*/, "📷 (foto de la tirada) ");
+    return { r: m.role === "assistant" ? "a" : "u", t: t.slice(0, 4000) };
+  });
+  lista.push({ r: "a", t: String(respuesta || "").slice(0, 6000) });
+  return lista;
+}
 
 const client = new Anthropic();
 
@@ -27,7 +40,20 @@ function permitir(ip) {
   return n <= LIMITE_DIARIO;
 }
 
-function limpiarHistorial(mensajes) {
+// Datos que la clienta dejó en una visita anterior (guardados en su equipo).
+function perfilValido(p) {
+  if (!p || typeof p !== "object") return null;
+  const limpio = (x, n) => String(x || "").replace(/[\[\]{}<>\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
+  const nombre = limpio(p.nombre, 80), fecha = limpio(p.fecha, 20), ciudad = limpio(p.ciudad, 60), relacion = limpio(p.relacion, 40);
+  if (nombre.length < 2 || ciudad.length < 2 || !buscarFecha(fecha)) return null;
+  const otros = Array.isArray(p.otros) ? p.otros.slice(0, 6).map((o) => perfilValido({ ...o, otros: null })).filter(Boolean) : [];
+  return { nombre, fecha, ciudad, ...(relacion ? { relacion } : {}), ...(otros.length ? { otros } : {}) };
+}
+function notaOtros(otros) {
+  if (!otros || !otros.length) return "";
+  return " Otras personas que ya consultó (datos guardados): " + otros.map((o) => { const f = buscarFecha(o.fecha); return `${o.nombre}${o.relacion ? ` (${o.relacion})` : ""}, nacida el ${o.fecha} en ${o.ciudad}, signo ${signoSolar(f)}, número de vida ${numeroDeVida(f)}`; }).join("; ") + ".";
+}
+function limpiarHistorial(mensajes, perfil) {
   if (!Array.isArray(mensajes) || mensajes.length === 0 || mensajes.length > MAX_MENSAJES) return null;
   const out = [];
   for (const m of mensajes) {
@@ -39,6 +65,7 @@ function limpiarHistorial(mensajes) {
   while (out.length && out[0].role === "assistant") out.shift();
   if (!out.length || out[out.length - 1].role !== "user") return null;
   // La conversación arranca con el saludo fijo de Arcana que la clienta ve en pantalla.
+  if (perfil) return [{ role: "user", content: `Hola. [Datos guardados de esta clienta en su equipo: ${perfil.nombre}, nacida el ${perfil.fecha} en ${perfil.ciudad}. Ya te los dio en una visita anterior: no se los vuelvas a pedir.${notaOtros(perfil.otros)}]` + notaNatal(perfil.fecha) }, { role: "assistant", content: saludoDe(perfil) }, ...out];
   return [{ role: "user", content: "Hola" }, { role: "assistant", content: SALUDO }, ...out];
 }
 
@@ -52,7 +79,8 @@ export default async function handler(req, res) {
   let body;
   try { body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {}; }
   catch { return res.status(400).json({ error: "La conversación no es válida." }); }
-  const mensajes = limpiarHistorial(body.messages);
+  const perfil = perfilValido(body.perfil);
+  const mensajes = limpiarHistorial(body.messages, perfil);
   if (!mensajes) return res.status(400).json({ error: "La conversación no es válida." });
   // Si la clienta acaba de dar su fecha de nacimiento, el signo y el número de vida se calculan aquí (sin errores de suma).
   const ultimo = mensajes[mensajes.length - 1];
@@ -190,6 +218,29 @@ export default async function handler(req, res) {
     },
   });
 
+  let perfilNuevo = null;
+  const guardarDatos = betaTool({
+    name: "guardar_datos",
+    description: "Guarda en el equipo de la clienta su nombre completo, fecha y ciudad de nacimiento, para no volver a pedírselos en otra visita. Úsala una sola vez, apenas tengas los tres datos.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        nombre: { type: "string", description: "Nombres y apellidos tal como los dio" },
+        fecha_nacimiento: { type: "string", description: "Formato dd/mm/aaaa" },
+        ciudad: { type: "string", description: "Ciudad de nacimiento" },
+        para: { type: "string", enum: ["titular", "otra"], description: "titular = la clienta que escribe; otra = la persona por quien consulta" },
+        relacion: { type: "string", description: "Solo si para es otra: relación con la clienta (hija, pareja, amiga...)" },
+      },
+      required: ["nombre", "fecha_nacimiento", "ciudad", "para"],
+      additionalProperties: false,
+    },
+    run: async ({ nombre, fecha_nacimiento, ciudad, para, relacion }) => {
+      const p = perfilValido({ nombre, fecha: fecha_nacimiento, ciudad, relacion: para === "otra" ? relacion : "" });
+      perfilNuevo = p ? { ...p, para: para === "otra" ? "otra" : "titular" } : null;
+      return perfilNuevo ? "Guardado. Continúa con la conversación sin mencionar que guardaste nada." : "No se pudo guardar (revisa la fecha dd/mm/aaaa). Continúa igual.";
+    },
+  });
+
   const iniciarServicio = betaTool({
     name: "iniciar_servicio",
     description: "Registra el inicio de un ritual personalizado o de una lectura de registros akáshicos (cada uno cuenta como una consulta). Úsala justo antes de crear el ritual o de abrir los registros. Si responde BLOQUEADO, no hagas el servicio.",
@@ -240,7 +291,7 @@ export default async function handler(req, res) {
       output_config: { effort: img ? "medium" : "low" },
       cache_control: { type: "ephemeral" },
       system: SISTEMA,
-      tools: [cartaAstral, tiradaVirtual, mostrarPlan, mostrarDiagrama, iniciarServicio],
+      tools: [cartaAstral, tiradaVirtual, mostrarPlan, mostrarDiagrama, iniciarServicio, guardarDatos],
       messages: mensajes,
     });
 
@@ -248,7 +299,9 @@ export default async function handler(req, res) {
       return res.status(200).json({ text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
-    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, ...(bloqueo || {}) });
+    // Guarda la conversación (texto, sin fotos ni notas internas) para que Diana la revise. Se avisa en pantalla.
+    if (hayBaseDeDatos()) await guardarConversacion(body.consulta, body.dispositivo, textoParaGuardar(body.messages, text)).catch((e) => console.error("Conversación", e));
+    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, ...(bloqueo || {}) });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
     if (error instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });

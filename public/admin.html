@@ -42,6 +42,10 @@ a{color:var(--candle)}
     </div>
     <p id="resumen" style="margin-bottom:12px"></p>
     <div id="lista" style="display:grid;gap:10px"></div>
+    <h1 style="margin-top:28px">Conversaciones</h1>
+    <p id="cvResumen" style="margin:6px 0 12px"></p>
+    <input id="cvBuscar" placeholder="Buscar palabra en las conversaciones" style="margin-bottom:10px;width:100%">
+    <div id="cvLista" style="display:grid;gap:10px"></div>
     <h1 style="margin-top:28px">Opiniones</h1>
     <p id="opResumen" style="margin:6px 0 12px"></p>
     <div id="opLista" style="display:grid;gap:10px"></div>
@@ -88,7 +92,7 @@ function pintar() {
 }
 async function cargar() {
   $("err").textContent = "";
-  try { datos = (await api("GET")).suscriptoras || []; $("login").hidden = true; $("panel").hidden = false; pintar(); cargarOpiniones(); }
+  try { datos = (await api("GET")).suscriptoras || []; $("login").hidden = true; $("panel").hidden = false; pintar(); cargarConversaciones(); cargarOpiniones(); }
   catch (e) { $("err").textContent = e.message; if (/Clave/.test(e.message)) { $("login").hidden = false; $("panel").hidden = true; } }
 }
 async function cargarOpiniones() {
@@ -108,6 +112,37 @@ async function cargarOpiniones() {
     }));
   } catch { $("opResumen").textContent = "No se pudieron cargar las opiniones."; }
 }
+let convs = [];
+function pintarConversaciones() {
+  const q = $("cvBuscar").value.trim().toLowerCase();
+  const filas = convs.filter((c) => !q || c.mensajes.some((m) => m.t.toLowerCase().includes(q)));
+  $("cvResumen").textContent = convs.length ? `${convs.length} conversaciones de los últimos 90 días (se borran solas después).` : "Todavía no hay conversaciones guardadas.";
+  $("cvLista").replaceChildren(...filas.map((c) => {
+    const d = document.createElement("details"); d.className = "card";
+    const s = document.createElement("summary"); s.style.cursor = "pointer";
+    const primera = (c.mensajes.find((m) => m.r === "u" && !/^Hola/.test(m.t)) || c.mensajes.find((m) => m.r === "u") || { t: "" }).t;
+    s.textContent = `${new Date(c.actualizada).toLocaleString("es-EC", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${c.mensajes.length} mensajes · ${primera.slice(0, 80)}`;
+    d.appendChild(s);
+    d.addEventListener("toggle", () => {
+      if (!d.open || d.dataset.ok) return; d.dataset.ok = 1;
+      for (const m of c.mensajes) {
+        const p = document.createElement("p"); p.style.whiteSpace = "pre-wrap"; p.style.margin = "8px 0 0"; p.style.padding = "8px 12px"; p.style.borderRadius = "10px";
+        p.style.background = m.r === "u" ? "var(--veil)" : "transparent"; p.style.color = "var(--ink)"; p.style.border = m.r === "a" ? "1px solid var(--veil)" : "0";
+        const b = document.createElement("b"); b.textContent = m.r === "u" ? "Clienta: " : "Arcana: "; b.style.fontSize = "13px"; b.style.color = m.r === "u" ? "var(--rose)" : "var(--candle)";
+        p.append(b, m.t); d.appendChild(p);
+      }
+    });
+    return d;
+  }));
+}
+async function cargarConversaciones() {
+  try {
+    const r = await fetch("/api/admin?ver=conversaciones", { headers: { "x-admin-clave": clave } }); const j = await r.json();
+    if (j.aviso) { $("cvResumen").textContent = j.aviso; return; }
+    convs = j.conversaciones || []; pintarConversaciones();
+  } catch { $("cvResumen").textContent = "No se pudieron cargar las conversaciones."; }
+}
+$("cvBuscar").oninput = () => pintarConversaciones();
 async function accion(id, accion, boton) {
   boton.disabled = true;
   try { const j = await api("POST", { id, accion }); await cargar(); if (j.aviso) { $("err").style.color = "var(--ok)"; $("err").textContent = "🎁 " + j.aviso; } } catch (e) { $("err").style.color = ""; $("err").textContent = e.message; boton.disabled = false; }

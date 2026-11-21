@@ -303,7 +303,7 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
       <button class="icon" id="mic" type="button" aria-label="Hablar" title="Hablar" hidden>🎙</button>
       <button class="icon send" id="send" type="button" aria-label="Enviar">➤</button>
     </div>
-    <div class="foot">Arcana es una inteligencia artificial. Sus lecturas son una guía de autoconocimiento y no reemplazan consejo médico, legal ni financiero. Solo para mayores de 18 años.</div>
+    <div class="foot">Arcana es una inteligencia artificial. Sus lecturas son una guía de autoconocimiento y no reemplazan consejo médico, legal ni financiero. Solo para mayores de 18 años. Tu conversación se guarda de forma privada por 90 días para mejorar el servicio.</div>
   </div>
 </div>
 
@@ -311,6 +311,18 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 const SALUDO = "Te doy la bienvenida a este espacio sagrado. Soy Arcana, la asistente virtual de Diana. Las cartas y las estrellas guardan mensajes para quien llega con el corazón abierto. Para abrir tu lectura y sintonizar con tu energía, dime tus nombres y apellidos completos, tu fecha de nacimiento y la ciudad donde naciste.";
 const $ = (id) => document.getElementById(id);
 const log = $("log"), box = $("box"), sendBtn = $("send"), micBtn = $("mic"), photoBtn = $("photoBtn"), photo = $("photo");
+let perfil = null; // datos que la clienta dejó en este equipo: { nombre, fecha, ciudad }
+try { perfil = JSON.parse(localStorage.getItem("arcana-perfil") || "null"); } catch {}
+const saludoDe = (p) => `Qué alegría tenerte de nuevo, ${p.nombre.split(/\s+/)[0]}. Las cartas te estaban esperando. Ya tengo tus datos guardados. Cuéntame, ¿la consulta de hoy es para ti o para otra persona?`;
+function guardarPerfil(p) {
+  const { para, ...datos } = p;
+  if (para === "otra") {
+    if (!perfil) return; // sin datos de la titular no se guarda a terceros
+    const otros = (perfil.otros || []).filter((o) => o.nombre.toLowerCase() !== datos.nombre.toLowerCase());
+    perfil = { ...perfil, otros: [datos, ...otros].slice(0, 6) };
+  } else perfil = { ...datos, otros: perfil && perfil.otros ? perfil.otros : undefined };
+  try { localStorage.setItem("arcana-perfil", JSON.stringify(perfil)); } catch {}
+}
 const historial = [];   // {role, content} que se envía al servidor (sin el saludo)
 const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 let dispositivo;
@@ -373,6 +385,7 @@ const FAQ = [
   ["Planes y precios", "Tienes 2 consultas gratis. Cada tirada, carta astral, ritual o lectura de registros akáshicos es una consulta; conversar conmigo no gasta. Después puedes elegir el pase de 24 horas por $1.99, con hasta 4 tiradas, o el plan semanal por $4.99, con hasta 10 tiradas en 7 días, que es el que más rinde."],
   ["¿Cómo pago?", "Cuando terminen tus consultas gratis aparecerá un formulario. Eliges tu plan, dejas tu nombre, teléfono y email, y te mostraré la cuenta para depositar o transferir con tu código de referencia. Envías el comprobante por WhatsApp y Diana activa tu plan al confirmarlo."],
   ["Limpiezas con Diana", "Las limpiezas energéticas las hace Diana en persona. Puedes agendar la tuya en la sección Agenda de la página de inicio.", "/#agenda"],
+  ["Mi privacidad", "Tu conversación con Arcana (solo el texto, no las fotos) se guarda de forma privada durante 90 días. Solo Diana puede leerla, para mejorar el servicio, y después se borra sola. No la compartimos con nadie. Si quieres que se borre antes, escríbele a Diana por WhatsApp. Tus datos de nacimiento se guardan además en tu propio teléfono, para no volver a pedírtelos."],
   ["¿Arcana es una persona?", "Soy Arcana, la asistente virtual de Diana, una inteligencia artificial. Mis lecturas son una guía de autoconocimiento y no reemplazan consejo médico, legal ni financiero."],
 ];
 function pintarFaq() {
@@ -994,8 +1007,15 @@ function begin(conVoz) {
   if (window.Musica) Musica.iniciar();
   if (started) return;
   started = true;
-  const d = addMsg("a", SALUDO); addReplay(d, SALUDO);
-  if (conVoz) hablar(SALUDO);
+  const saludo = perfil && perfil.nombre ? saludoDe(perfil) : SALUDO;
+  const d = addMsg("a", saludo); addReplay(d, saludo);
+  if (perfil && perfil.nombre) {
+    const no = document.createElement("button"); no.type = "button"; no.className = "linkbtn"; no.style.marginLeft = "12px";
+    no.textContent = `¿No eres ${perfil.nombre.split(/\s+/)[0]}? Empezar con otros datos`;
+    no.onclick = () => { perfil = null; try { localStorage.removeItem("arcana-perfil"); } catch {} callar(); historial.length = 0; consulta = nuevoId(); started = false; log.replaceChildren(); begin(false); };
+    d.appendChild(no);
+  }
+  if (conVoz) hablar(saludo);
   pintarFaq();
 }
 
@@ -1028,7 +1048,7 @@ async function send(auto) {
   try {
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dispositivo, consulta, ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
+      body: JSON.stringify({ dispositivo, consulta, perfil: perfil || undefined, ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");
@@ -1038,6 +1058,7 @@ async function send(auto) {
     if (j.plan) { bubble.remove(); mostrarPlan(j.plan); log.appendChild(bubble); }
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
     pintarTexto(bubble, j.text);
+    if (j.perfil) guardarPerfil(j.perfil);
     if (lectura && lectura.cartas && !j.baraja) setTimeout(revelarPendientes, 8000); // tiempo para que ella misma las voltee
     // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
     // La imagen solo viaja una vez: en el historial queda una nota para que Arcana no crea que no llegó.

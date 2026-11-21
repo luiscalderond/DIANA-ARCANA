@@ -22,6 +22,10 @@ export default async function handler(req, res) {
   }
   if (!db.hayBaseDeDatos()) return res.status(503).json({ error: "Falta conectar la base de datos." });
   try {
+    if (req.method === "GET" && /[?&]ver=conversaciones/.test(req.url || "")) {
+      try { await db.borrarConversacionesViejas().catch(() => {}); return res.status(200).json({ conversaciones: await db.listarConversaciones() }); }
+      catch (e) { return res.status(200).json({ conversaciones: [], aviso: "Falta crear la tabla de conversaciones en Supabase (conversaciones.sql)." }); }
+    }
     if (req.method === "GET" && /[?&]ver=opiniones/.test(req.url || "")) {
       try { return res.status(200).json({ opiniones: await db.listarOpiniones() }); }
       catch (e) { return res.status(200).json({ opiniones: [], aviso: "Falta crear la tabla de opiniones en Supabase (supabase/esquema.sql)." }); }

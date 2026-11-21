@@ -44,3 +44,15 @@ create table if not exists public.arcana_opiniones (
 create index if not exists arcana_opiniones_creada_idx on public.arcana_opiniones (creada desc);
 alter table public.arcana_opiniones enable row level security;
 grant all on public.arcana_opiniones to service_role;
+
+-- Conversaciones con Arcana (texto, sin fotos). Se guardan con aviso a la clienta y se borran solas a los 90 días.
+create table if not exists public.arcana_conversaciones (
+  consulta text primary key,
+  dispositivo text not null,
+  mensajes jsonb not null default '[]',
+  creada timestamptz not null default now(),
+  actualizada timestamptz not null default now()
+);
+create index if not exists arcana_conversaciones_actualizada_idx on public.arcana_conversaciones (actualizada desc);
+alter table public.arcana_conversaciones enable row level security;
+grant all on public.arcana_conversaciones to service_role;
