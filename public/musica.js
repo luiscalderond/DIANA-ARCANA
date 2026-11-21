@@ -21,14 +21,49 @@ window.Musica = (() => {
     const seco = ac.createGain(); seco.gain.value = 0.6; seco.connect(master);
     ac._bus = (nodo) => { nodo.connect(seco); nodo.connect(rev); };
 
-    // Colchón: acorde abierto en Re con un filtro que respira despacio.
-    const filtro = ac.createBiquadFilter(); filtro.type = "lowpass"; filtro.frequency.value = 700; filtro.Q.value = 0.4;
-    const lfo = ac.createOscillator(), lfoG = ac.createGain(); lfo.frequency.value = 0.05; lfoG.gain.value = 350;
+    // Colchón: progresión mística Rem - Sib - Fa - Do que cambia cada 8 segundos.
+    const filtro = ac.createBiquadFilter(); filtro.type = "lowpass"; filtro.frequency.value = 900; filtro.Q.value = 0.5;
+    const lfo = ac.createOscillator(), lfoG = ac.createGain(); lfo.frequency.value = 0.07; lfoG.gain.value = 400;
     lfo.connect(lfoG); lfoG.connect(filtro.frequency); lfo.start();
-    const pad = ac.createGain(); pad.gain.value = 0.11; filtro.connect(pad); ac._bus(pad);
-    for (const [f, tipo] of [[73.42, "sine"], [110, "triangle"], [146.83, "sine"], [220.5, "triangle"], [293.66, "sine"], [329.63, "sine"]]) {
-      for (const det of [-4, 4]) { const o = ac.createOscillator(); o.type = tipo; o.frequency.value = f; o.detune.value = det; const g = ac.createGain(); g.gain.value = 0.18; o.connect(g); g.connect(filtro); o.start(); }
+    const pad = ac.createGain(); pad.gain.value = 0.1; filtro.connect(pad); ac._bus(pad);
+    ac._voces = [];
+    for (let i = 0; i < 4; i++) for (const det of [-5, 5]) {
+      const o = ac.createOscillator(); o.type = i === 0 ? "sine" : "triangle"; o.detune.value = det;
+      const g = ac.createGain(); g.gain.value = i === 0 ? 0.3 : 0.16; o.connect(g); g.connect(filtro); o.start();
+      ac._voces.push({ o, i });
     }
+    ac._acorde = 0; acorde();
+  }
+
+  // Rem, Sib, Fa, Do: graves + tres notas del acorde; el arpegio usa las mismas notas.
+  const ACORDES = [
+    [73.42, 146.83, 174.61, 220.0], [58.27, 116.54, 146.83, 174.61],
+    [87.31, 174.61, 220.0, 261.63], [65.41, 130.81, 164.81, 196.0],
+  ];
+  function acorde() {
+    const notas = ACORDES[ac._acorde % 4], t = ac.currentTime;
+    for (const v of ac._voces) v.o.frequency.setTargetAtTime(notas[v.i], t, 0.8);
+  }
+
+  // Arpegio suave tipo arpa, a 66 pulsos por minuto.
+  let paso = 0;
+  function arpegio() {
+    const notas = ACORDES[ac._acorde % 4], patron = [1, 2, 3, 2, 3, 1, 2, 3];
+    const f = notas[patron[paso % 8]] * (paso % 16 < 8 ? 2 : 4), t = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain(), fl = ac.createBiquadFilter();
+    o.type = "triangle"; o.frequency.value = f; fl.type = "lowpass"; fl.frequency.value = 2400;
+    o.connect(fl); fl.connect(g);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+    ac._bus(g); o.start(t); o.stop(t + 1.7);
+    // Latido muy suave en el primer pulso de cada compás, como un tambor chamánico lejano.
+    if (paso % 4 === 0) {
+      const d = ac.createOscillator(), dg = ac.createGain(); d.type = "sine";
+      d.frequency.setValueAtTime(95, t); d.frequency.exponentialRampToValueAtTime(48, t + 0.35);
+      dg.gain.setValueAtTime(0, t); dg.gain.linearRampToValueAtTime(0.16, t + 0.01); dg.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+      d.connect(dg); ac._bus(dg); d.start(t); d.stop(t + 0.7);
+    }
+    paso++;
+    if (paso % 16 === 0) { ac._acorde++; acorde(); }
   }
 
   function campanita() {
@@ -71,7 +106,10 @@ window.Musica = (() => {
   }
   function encender() {
     try {
-      if (!ac) { montar(); programar(campanita, 2500, 6000); programar(cuenco, 15000, 30000); setInterval(volumen, 400); }
+      if (!ac) {
+        montar(); programar(campanita, 4000, 9000); programar(cuenco, 25000, 45000); setInterval(volumen, 400);
+        setInterval(() => { if (encendida && !document.hidden) arpegio(); }, 60000 / 66 / 2);
+      }
       if (ac.state === "suspended") ac.resume();
       encendida = true; volumen(); actualizarBoton();
     } catch (e) { console.warn("Música no disponible", e); }
