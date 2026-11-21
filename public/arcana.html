@@ -1257,11 +1257,11 @@ function mostrarSuerte() {
   const box = el("div", { id: "suerte", class: "suerte", role: "dialog", "aria-modal": "true", "aria-label": "Escoge tu suerte" });
   const fondo = el("div", { class: "fondo", "aria-hidden": "true" }, el("div", { class: "halo" }), el("div", { class: "vineta" }));
   const foco = el("div", { class: "foco" }); fondo.append(foco);
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 16; i++) {
     const m = el("span", { class: "mota" });
-    m.style.left = (Math.random() * 100).toFixed(1) + "%";
-    m.style.setProperty("--s", (1.5 + Math.random() * 3).toFixed(1) + "px"); m.style.setProperty("--o", (0.35 + Math.random() * 0.5).toFixed(2));
-    m.style.setProperty("--d", (8 + Math.random() * 7).toFixed(1) + "s"); m.style.setProperty("--t", (-Math.random() * 15).toFixed(1) + "s");
+    m.style.left = (Math.random() < 0.5 ? Math.random() * 22 : 78 + Math.random() * 22).toFixed(1) + "%"; // el centro queda limpio para las cartas y el texto
+    m.style.setProperty("--s", (1.5 + Math.random() * 2).toFixed(1) + "px"); m.style.setProperty("--o", (0.25 + Math.random() * 0.35).toFixed(2));
+    m.style.setProperty("--d", (10 + Math.random() * 5).toFixed(1) + "s"); m.style.setProperty("--t", (-Math.random() * 15).toFixed(1) + "s");
     m.style.setProperty("--dx", (Math.random() * 60 - 30).toFixed(0) + "px");
     fondo.append(m);
   }
@@ -1296,15 +1296,16 @@ function mostrarSuerte() {
     if (elegida || !document.body.contains(box)) return clearInterval(llamador);
     const c = cartas[Math.floor(Math.random() * n)]; c.classList.remove("llama"); void c.offsetWidth; c.classList.add("llama");
     setTimeout(() => c.classList.remove("llama"), 1700);
-  }, 3200);
-  const salir = () => { clearInterval(llamador); box.remove(); };
+  }, 5000);
+  const salir = () => { clearInterval(llamador); document.removeEventListener("keydown", esc); box.remove(); };
+  const esc = (e) => { if (e.key === "Escape") salir(); }; document.addEventListener("keydown", esc);
   cerrar.onclick = salir;
   const giro = el("div", { class: "giro" }), inner = el("div", { class: "in" }), cara = el("div", { class: "cara" });
   inner.append(el("div", { class: "lomo" }), cara); giro.append(inner);
   const titulo = el("h3"), mensaje = el("p", { class: "mensaje" }), acc = el("div", { class: "acc" });
   const revela = el("div", { class: "revela" }, giro, titulo, mensaje, acc);
   const h2 = el("h2", { text: "Tu carta revela tu suerte de hoy" });
-  const placa = el("div", { class: "placa" }, el("p", { class: "kicker", text: "✦ ESCOGE TU SUERTE ✦" }), h2, el("p", { class: "sub", text: "Confía en tu intuición y toca la carta que te llame" }));
+  const placa = el("div", { class: "placa" }, el("p", { class: "kicker", text: "✦ ESCOGE TU SUERTE ✦" }), h2, el("p", { class: "sub", text: "Toca la carta que te llame" }));
   box.append(fondo, cerrar, placa, mesa, revela);
   document.body.appendChild(box); sonar("roce");
   function revelar(idx) {
