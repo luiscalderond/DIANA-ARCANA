@@ -14,7 +14,7 @@ window.Musica = (() => {
   }
 
   function montar() {
-    ac = new (window.AudioContext || window.webkitAudioContext)();
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
     const rev = reverb(), mojado = ac.createGain(); mojado.gain.value = 0.55;
     rev.connect(mojado); mojado.connect(master);
@@ -106,7 +106,7 @@ window.Musica = (() => {
   }
   function encender() {
     try {
-      if (!ac) {
+      if (!master) {
         montar(); programar(campanita, 4000, 9000); programar(cuenco, 25000, 45000); setInterval(volumen, 400);
         setInterval(() => { if (encendida && !document.hidden) arpegio(); }, 60000 / 66 / 2);
       }
@@ -125,6 +125,30 @@ window.Musica = (() => {
     const b = document.getElementById("musica"); if (!b) return;
     b.setAttribute("aria-pressed", String(encendida));
   }
+  // Efectos de la mesa: roce de cartón mate al cortar el mazo y un destello cristalino al revelar una carta.
+  function efecto(tipo) {
+    if (!preferencia) return;
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const t = ac.currentTime, g = ac.createGain(); g.connect(ac.destination);
+      if (tipo === "roce" || tipo === "corte") {
+        const dur = tipo === "corte" ? 0.32 : 0.12, buf = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = tipo === "corte" ? 1800 : 2600 + Math.random() * 900; bp.Q.value = 0.9;
+        g.gain.setValueAtTime(tipo === "corte" ? 0.22 : 0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        src.connect(bp); bp.connect(g); src.start(t);
+      } else {
+        [1568, 2093, 2637].forEach((f, i) => {
+          const o = ac.createOscillator(), gi = ac.createGain(); o.type = "sine"; o.frequency.value = f;
+          gi.gain.setValueAtTime(0, t + i * 0.06); gi.gain.linearRampToValueAtTime(0.07, t + i * 0.06 + 0.01); gi.gain.exponentialRampToValueAtTime(0.0008, t + i * 0.06 + 1.4);
+          o.connect(gi); gi.connect(g); o.start(t + i * 0.06); o.stop(t + i * 0.06 + 1.5);
+        });
+        g.gain.value = 1;
+      }
+    } catch {}
+  }
   document.addEventListener("visibilitychange", () => { if (!ac) return; document.hidden ? ac.suspend() : encendida && ac.resume(); });
-  return { iniciar, alternar, microfono };
+  return { iniciar, alternar, microfono, efecto };
 })();

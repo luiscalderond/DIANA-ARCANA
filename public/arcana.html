@@ -98,7 +98,34 @@ textarea,button{font:inherit}
 .lectura-card .tools{justify-content:center;padding:14px 14px 18px;margin:0}
 .lectura-card .tools .linkbtn{border:1px solid rgba(217,180,106,.5);border-radius:999px;padding:9px 16px;font-size:14px}
 .linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
-.spread{align-self:stretch;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0}
+.spread{align-self:stretch;display:flex;flex-wrap:wrap;gap:12px 10px;justify-content:center;padding:14px 10px 16px;border-radius:18px;position:relative;
+  background:url(/terciopelo.svg),url(/geometria.svg) center/120px,radial-gradient(ellipse at 50% 28%,#2a1638 0%,#150b1f 55%,#07050b 100%);
+  box-shadow:inset 0 0 0 1px rgba(217,180,106,.35),inset 0 0 0 5px #0b0710,inset 0 0 0 6px rgba(217,180,106,.18),inset 0 0 60px rgba(0,0,0,.75),0 10px 28px rgba(0,0,0,.45)}
+.spread .pista{flex-basis:100%;margin:0 0 2px;text-align:center;font-size:13px;color:#e6d6ea;letter-spacing:.02em}
+.spread .pista b{color:var(--candle)}
+.card{transition:filter .35s ease}
+.spread.enfoque .card:not(.foco){filter:brightness(.6) saturate(.85)}
+@media (hover:hover){.spread:has(.card:hover) .card:not(:hover){filter:brightness(.6) saturate(.85)}}
+.card .reverso{position:absolute;inset:0;border-radius:inherit;background:#1d1433 url(/dorso.svg) center/100% 100% no-repeat;z-index:4;box-shadow:inset 0 0 0 1px rgba(243,217,154,.8)}
+.card:not(.oculta) .reverso{display:none}
+.card.oculta{cursor:pointer}
+.card.oculta .name,.card.oculta .inv-tag{visibility:hidden}
+.card.oculta .marco{animation:respira 2.6s ease-in-out infinite}
+@keyframes respira{50%{box-shadow:0 8px 22px rgba(0,0,0,.5),0 0 26px rgba(217,180,106,.55)}}
+.card.volteando .marco{animation:voltear .76s cubic-bezier(.45,.05,.25,1) both;z-index:5}
+@keyframes voltear{0%{transform:perspective(700px) translateY(0) scale(1) rotateY(0)}28%{transform:perspective(700px) translateY(-16px) scale(1.12) rotateY(0)}50%{transform:perspective(700px) translateY(-18px) scale(1.14) rotateY(90deg)}78%{transform:perspective(700px) translateY(-8px) scale(1.08) rotateY(0);box-shadow:0 0 0 2px #fff3c4,0 0 36px 10px rgba(255,214,120,.9)}100%{transform:perspective(700px) translateY(0) scale(1) rotateY(0)}}
+.card .marco{background-size:220% 220%;background-position:calc(var(--fx,.5) * 100%) calc(var(--fy,.5) * 100%)}
+.card .foil,.zoom .foil{position:absolute;inset:4px;border-radius:7px;pointer-events:none;-webkit-mask:var(--mask) center/100% 100% no-repeat;mask:var(--mask) center/100% 100% no-repeat;
+  background:linear-gradient(115deg,transparent 34%,rgba(255,236,180,.0) 40%,rgba(255,252,232,.8) 48%,rgba(255,200,100,.6) 53%,transparent 63%);background-size:300% 100%;
+  background-position:calc((.12 + var(--fx,.5) * .76) * 100%) 0;mix-blend-mode:screen;opacity:var(--fo,0);transition:opacity .35s;z-index:2}
+.card.inv .foil,.zoom.inv .foil{transform:rotate(180deg)}
+.card.revelada .foil{animation:foilBarrido 1.5s ease-out .1s 1}
+@keyframes foilBarrido{from{opacity:1;background-position:5% 0}to{opacity:0;background-position:95% 0}}
+.zoom .foil{inset:6px}
+.polvo{position:absolute;width:3px;height:3px;border-radius:50%;pointer-events:none;opacity:0;z-index:3;background:var(--pc,#fff1c2);box-shadow:0 0 6px 2px var(--pg,rgba(255,214,120,.7));animation:polvo var(--d,6s) linear var(--t,0s) infinite}
+@keyframes polvo{0%{opacity:0;transform:translate(0,0)}15%{opacity:.8}85%{opacity:.5}100%{opacity:0;transform:translate(var(--dx,8px),-60px)}}
+.card.agua{--pc:#dff0ff;--pg:rgba(130,185,255,.75)}
+.card.agua .chispa{background:#e6f3ff;box-shadow:0 0 6px 2px rgba(130,185,255,.8)}
 .spread.muchas .card{width:84px}
 .spread.muchas .card .name{font-size:13px}
 .card{width:104px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:zoom-in}
@@ -116,12 +143,25 @@ textarea,button{font:inherit}
 @keyframes destello{from{background-position:120% 0}to{background-position:-30% 0}}
 .chispa{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff4c8;box-shadow:0 0 6px 2px rgba(255,220,140,.8);opacity:0;pointer-events:none;animation:chispa 3.2s ease-in-out infinite}
 @keyframes chispa{0%{opacity:0;transform:translateY(0) scale(.6)}25%{opacity:.95}70%{opacity:.6}100%{opacity:0;transform:translateY(-38px) scale(.2)}}
-.card.revelada .marco{animation:revelar .7s cubic-bezier(.2,.8,.2,1.2) both}
 @keyframes revelar{from{transform:perspective(700px) rotateY(90deg) scale(.9);filter:brightness(2)}to{transform:perspective(700px) rotateY(0) scale(1);filter:none}}
 .zoom .marco-z img{display:block}
+.zoom.extra img{max-height:62vh}
+.hs-capa{position:absolute;inset:6px;pointer-events:none}
+.hs{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:0;padding:0;pointer-events:auto;cursor:pointer;background:radial-gradient(circle,#fffbe6 0 18%,rgba(255,214,120,.75) 28%,rgba(255,214,120,0) 62%);animation:latido 2.2s ease-in-out infinite}
+.hs::after{content:"";position:absolute;inset:3px;border-radius:50%;border:1.5px solid rgba(255,226,160,.85);animation:onda 2.2s ease-out infinite}
+.hs.visto{opacity:.5;animation:none}.hs.visto::after{display:none}
+.hs.activo{opacity:1;background:radial-gradient(circle,#fff 0 22%,rgba(255,214,120,.9) 32%,rgba(255,214,120,0) 66%)}
+@keyframes latido{50%{transform:scale(1.2)}}@keyframes onda{from{transform:scale(.55);opacity:1}to{transform:scale(1.7);opacity:0}}
+.capsula{position:absolute;left:5%;right:5%;bottom:13%;pointer-events:auto;cursor:pointer;background:rgba(14,9,24,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(217,180,106,.7);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;color:#efe4f2;box-shadow:0 10px 30px rgba(0,0,0,.6);animation:aparece .3s ease-out both}
+.capsula b{display:block;font-family:var(--display);font-size:18px;color:#f3d99a;font-weight:600}
+.capsula small{display:block;color:var(--candle);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+@keyframes aparece{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.zoom .hs-cuenta{margin:0;font-size:13px;color:var(--mist);font-family:var(--body)}
+.zoom .oculto{cursor:pointer;border:1px solid var(--candle);background:linear-gradient(135deg,#3a1d52,#22102f);color:#f6e7bf;border-radius:999px;padding:11px 18px;font:600 14.5px/1.3 var(--body);max-width:420px;box-shadow:0 0 24px rgba(217,180,106,.35);text-align:center}
+.zoom .oculto:hover{box-shadow:0 0 34px rgba(217,180,106,.6)}
 .zoom .marco-z{position:relative;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .2s ease-out}
 .zoom .marco-z .brillo{border-radius:12px;animation:destello 2.4s ease-in-out .3s infinite}
-@media (prefers-reduced-motion:reduce){.card .brillo,.chispa,.zoom .brillo{animation:none!important;display:none}.card.revelada .marco{animation:none}.card .marco,.zoom .marco-z{transform:none!important}}
+@media (prefers-reduced-motion:reduce){.card .brillo,.chispa,.polvo,.zoom .brillo{animation:none!important;display:none}.card.volteando .marco,.card.oculta .marco,.hs,.hs::after{animation:none!important}.card.revelada .marco{animation:none}.card .marco,.zoom .marco-z{transform:none!important}}
 .card .name{font-family:var(--display);font-size:15px;font-weight:600;line-height:1.1;color:#f3d99a;letter-spacing:.02em}
 .card .inv-tag{font-size:10.5px;color:var(--rose);min-height:1.2em}
 .diagrama{align-self:stretch;border:1px solid var(--veil);border-radius:16px;background:var(--cloth);padding:16px;display:flex;flex-direction:column;gap:12px;align-items:center}
@@ -158,6 +198,10 @@ textarea,button{font:inherit}
 .dorso.elegida::before{content:attr(data-n);position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--candle);color:var(--night);font-weight:700;font-size:12px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;z-index:3}
 .baraja.cerrada .dorso:not(.elegida){opacity:.25;pointer-events:none}
 .abanico.barajando .dorso{transform:translateX(var(--junta)) rotate(var(--giro))}
+.abanico.por-cortar{overflow:hidden;touch-action:none;cursor:grab}
+.abanico.por-cortar .dorso{transition:transform .22s ease-out}
+.abanico.destello .dorso{box-shadow:0 0 0 1px #fff3c4,0 0 18px 4px rgba(255,214,120,.85)}
+.baraja .cortar{border:1px solid var(--candle);background:rgba(20,10,28,.6);color:#f3d99a;border-radius:999px;padding:8px 16px;font:600 14px var(--body);cursor:pointer}
 @media (prefers-reduced-motion:no-preference){.abanico.barajando{animation:mezcla .35s ease-in-out 3}@keyframes mezcla{50%{transform:translateX(6px)}}}
 .zoom{position:fixed;inset:0;background:rgba(10,8,15,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;padding:16px;cursor:zoom-out}
 .zoom img{max-height:76vh;max-width:100%;border-radius:12px;border:6px solid transparent;background:linear-gradient(#1d1433,#1d1433) padding-box,linear-gradient(135deg,#f3d99a,#b8893a 30%,#f0d28a 50%,#a87a30 75%,#f3d99a) border-box;box-shadow:0 0 40px rgba(217,180,106,.3);filter:saturate(1.18) contrast(1.06) sepia(.06)}
@@ -413,17 +457,67 @@ function pintarTexto(el, text) {
   volcar();
 }
 // Inclinación 3D que sigue el dedo o el cursor, destello metálico y chispas que flotan sobre la carta.
-function inclinar(el, zona) {
-  zona.addEventListener("pointermove", (e) => { const r = zona.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5; el.style.setProperty("--ry", (x * 16).toFixed(1) + "deg"); el.style.setProperty("--rx", (-y * 12).toFixed(1) + "deg"); });
-  zona.addEventListener("pointerleave", () => { el.style.setProperty("--ry", "0deg"); el.style.setProperty("--rx", "0deg"); });
+function ladear(el, x, y) { // x, y entre -0.5 y 0.5
+  el.style.setProperty("--ry", (x * 16).toFixed(1) + "deg"); el.style.setProperty("--rx", (-y * 12).toFixed(1) + "deg");
+  el.style.setProperty("--fx", (x + 0.5).toFixed(3)); el.style.setProperty("--fy", (y + 0.5).toFixed(3)); el.style.setProperty("--fo", "0.95");
 }
+function enderezar(el) { ["--ry", "--rx"].forEach((v) => el.style.setProperty(v, "0deg")); el.style.setProperty("--fo", "0"); }
+function inclinar(el, zona) {
+  zona.addEventListener("pointermove", (e) => { const r = zona.getBoundingClientRect(); ladear(el, (e.clientX - r.left) / r.width - 0.5, (e.clientY - r.top) / r.height - 0.5); });
+  zona.addEventListener("pointerleave", () => enderezar(el));
+}
+// Giroscopio: al inclinar el teléfono, el reflejo dorado recorre las cartas reveladas (o la carta ampliada).
+let giroPedido = false, giroCuadro = 0;
+function pedirGiroscopio() {
+  if (giroPedido || !window.DeviceOrientationEvent) return; giroPedido = true;
+  const activar = () => window.addEventListener("deviceorientation", (e) => {
+    if (e.gamma == null || giroCuadro) return;
+    giroCuadro = requestAnimationFrame(() => {
+      giroCuadro = 0;
+      const x = Math.max(-1, Math.min(1, e.gamma / 28)) * 0.5, y = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 28)) * 0.5;
+      const z = document.querySelector(".zoom .marco-z");
+      const objetivos = z ? [z] : [...(([...document.querySelectorAll(".spread")].pop() || document).querySelectorAll(".card:not(.oculta):not(.volteando) .marco"))];
+      objetivos.forEach((el) => ladear(el, x, y));
+    });
+  });
+  if (typeof DeviceOrientationEvent.requestPermission === "function") DeviceOrientationEvent.requestPermission().then((r) => { if (r === "granted") activar(); }).catch(() => {});
+  else activar();
+}
+function vibrar(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch {} }
+function sonar(t) { if (window.Musica && Musica.efecto) Musica.efecto(t); }
+function polvo(cont, n) {
+  for (let i = 0; i < n; i++) { const c = document.createElement("span"); c.className = "polvo"; c.style.left = (8 + Math.random() * 84) + "%"; c.style.top = (40 + Math.random() * 55) + "%"; c.style.setProperty("--d", (4.5 + Math.random() * 3.5).toFixed(1) + "s"); c.style.setProperty("--t", (Math.random() * 5).toFixed(1) + "s"); c.style.setProperty("--dx", (Math.random() * 24 - 12).toFixed(0) + "px"); cont.appendChild(c); }
+}
+function mascaraFoil(imagen) { const m = /\/cartas\/(\w+)\.webp$/.exec(imagen || ""); return m ? `url(/cartas/foil/${m[1]}.png)` : ""; }
+function esAgua(imagen) { return /\/(cartas\/[cs]|marsella\/[ce])\d\d\./.test(imagen || ""); }
 function chispas(cont, n) {
   for (let i = 0; i < n; i++) { const c = document.createElement("span"); c.className = "chispa"; c.style.left = (12 + Math.random() * 76) + "%"; c.style.top = (18 + Math.random() * 62) + "%"; c.style.animationDelay = (Math.random() * 3.2).toFixed(2) + "s"; cont.appendChild(c); }
 }
-function decorarCarta(k, marco) {
+function decorarCarta(k, marco, imagen) {
+  const mk = mascaraFoil(imagen);
+  if (mk) { const f = document.createElement("span"); f.className = "foil"; marco.style.setProperty("--mask", mk); marco.appendChild(f); }
   const b = document.createElement("span"); b.className = "brillo"; marco.appendChild(b);
-  chispas(marco, 4); inclinar(marco, k);
-  k.classList.add("revelada"); setTimeout(() => k.classList.remove("revelada"), 2200);
+  if (esAgua(imagen)) k.classList.add("agua");
+  inclinar(marco, k);
+}
+// Volteo con tensión: la carta se levanta hacia la cámara, gira en 0.76 s y destella al revelarse.
+function voltearCarta(k, c) {
+  if (!k.classList.contains("oculta") || k.classList.contains("volteando")) return;
+  pedirGiroscopio();
+  k.classList.add("volteando"); sonar("roce");
+  setTimeout(() => k.classList.remove("oculta"), 380);
+  setTimeout(() => { vibrar([10, 40, 22]); sonar("revelar"); }, 560);
+  setTimeout(() => {
+    k.classList.remove("volteando"); k.classList.add("revelada");
+    const marco = k.querySelector(".marco"); chispas(marco, 4); polvo(marco, 6);
+    k.setAttribute("aria-label", `${c.posicion}: ${c.carta}${c.invertida ? ", invertida" : ""}. Toca para ver sus símbolos`);
+    setTimeout(() => k.classList.remove("revelada"), 2000);
+    const s = k.closest(".spread"); if (s && s._pista) s._pista();
+  }, 770);
+}
+function revelarPendientes() {
+  const s = [...document.querySelectorAll(".spread")].pop(); if (!s) return;
+  [...s.querySelectorAll(".card.oculta")].forEach((k, i) => setTimeout(() => k.click(), i * 280));
 }
 function addMsg(role, text, imgUrl) {
   const w = $("welcome"); if (w) w.remove();
@@ -647,20 +741,40 @@ function mostrarCartas(cartas) {
   pdfCerrado = false; if (pdfFlota) pdfFlota.classList.remove("ver");
   lectura = { nombre: nombreTirada || "Tu tirada", cartas, foto: null, textos: [] };
   const s = document.createElement("div"); s.className = "spread" + (cartas.length > 5 ? " muchas" : ""); s.setAttribute("aria-label", "Cartas de tu tirada");
+  const pista = document.createElement("p"); pista.className = "pista"; s.appendChild(pista);
+  s._pista = () => {
+    const faltan = s.querySelectorAll(".card.oculta").length;
+    pista.innerHTML = faltan ? (faltan === cartas.length ? "Toca cada carta para <b>revelarla</b>" : `Faltan <b>${faltan}</b> por revelar`) : "Toca una carta para descubrir <b>sus símbolos</b>";
+  };
+  const conImagen = cartas.some((c) => c.imagen);
   cartas.forEach((c, i) => {
-    const k = document.createElement("button"); k.type = "button"; k.className = "card" + (c.invertida ? " inv" : "");
+    const k = document.createElement("button"); k.type = "button"; k.className = "card" + (c.invertida ? " inv" : "") + (c.imagen ? " oculta" : "");
     k.style.animationDelay = (i * 0.15) + "s";
-    k.setAttribute("aria-label", `${c.posicion}: ${c.carta}${c.invertida ? ", invertida" : ""}. Toca para ampliar`);
+    k.setAttribute("aria-label", c.imagen ? `${c.posicion}: carta boca abajo. Toca para revelarla` : `${c.posicion}: ${c.carta}`);
     const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = c.posicion;
     const marco = document.createElement("span"); marco.className = "marco";
-    if (c.imagen) { const im = document.createElement("img"); im.src = c.imagen; im.alt = ""; im.loading = "lazy"; marco.appendChild(im); decorarCarta(k, marco); }
+    if (c.imagen) {
+      const im = document.createElement("img"); im.src = c.imagen; im.alt = ""; marco.appendChild(im); decorarCarta(k, marco, c.imagen);
+      const rv = document.createElement("span"); rv.className = "reverso"; marco.appendChild(rv);
+    }
     const name = document.createElement("span"); name.className = "name"; name.textContent = c.carta;
     const inv = document.createElement("span"); inv.className = "inv-tag"; inv.textContent = c.invertida ? "invertida" : "";
     k.append(pos, marco, name, inv);
-    k.onclick = () => ampliarCarta(c);
+    k.onclick = (e) => {
+      e.stopPropagation();
+      if (k.classList.contains("oculta")) return voltearCarta(k, c);
+      if (k.classList.contains("volteando")) return;
+      s.querySelectorAll(".card.foco").forEach((x) => x.classList.remove("foco"));
+      k.classList.add("foco"); s.classList.add("enfoque");
+      ampliarCarta(c);
+    };
     s.appendChild(k);
   });
+  s.addEventListener("click", () => { s.classList.remove("enfoque"); s.querySelectorAll(".card.foco").forEach((x) => x.classList.remove("foco")); });
+  if (conImagen) s._pista(); else pista.remove();
   log.appendChild(s); log.scrollTop = log.scrollHeight;
+  // Si la clienta no las voltea, se revelan solas unos segundos después de llegar la lectura (o a los 20 s).
+  if (conImagen) setTimeout(revelarPendientes, 20000);
 }
 function mostrarBaraja(b) {
   nombreTirada = b.nombre;
@@ -700,10 +814,32 @@ function mostrarBaraja(b) {
   box.append(t, guia, fan);
   log.appendChild(box); log.scrollTop = log.scrollHeight;
   fan.scrollLeft = (fan.scrollWidth - fan.clientWidth) / 2; // el mazo junto queda a la vista mientras se baraja
+  // Ritual de corte: la clienta desliza el dedo sobre el mazo (roce de cartón y destello dorado) y luego se abre el abanico.
+  let cortado = false, recorrido = 0, ultimoX = null, paso = 0;
+  const cortar = () => {
+    if (cortado) return; cortado = true;
+    sonar("corte"); vibrar(25); fan.classList.add("destello"); btnCortar.remove();
+    setTimeout(() => {
+      fan.classList.remove("barajando", "por-cortar"); fan.scrollLeft = (fan.scrollWidth - fan.clientWidth) / 2; actualizar();
+      setTimeout(() => fan.classList.remove("destello"), 700);
+    }, 450);
+  };
+  const btnCortar = document.createElement("button"); btnCortar.type = "button"; btnCortar.className = "cortar"; btnCortar.textContent = "✦ Cortar el mazo"; btnCortar.onclick = cortar;
+  fan.addEventListener("pointerdown", (e) => { if (fan.classList.contains("por-cortar")) { ultimoX = e.clientX; pedirGiroscopio(); } });
+  fan.addEventListener("pointermove", (e) => {
+    if (!fan.classList.contains("por-cortar") || ultimoX == null || cortado) return;
+    recorrido += Math.abs(e.clientX - ultimoX); ultimoX = e.clientX;
+    if (recorrido - paso > 26) {
+      paso = recorrido; sonar("roce");
+      const ds = fan.children; for (let j = 0; j < 6; j++) { const d = ds[Math.floor(Math.random() * ds.length)]; d.style.setProperty("--giro", `${(Math.random() * 24 - 12).toFixed(1)}deg`); }
+    }
+    if (recorrido > 200) cortar();
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => fan.addEventListener(ev, () => { ultimoX = null; }));
   setTimeout(() => {
-    fan.classList.remove("barajando");
-    fan.scrollLeft = (fan.scrollWidth - fan.clientWidth) / 2;
-    actualizar();
+    fan.classList.add("por-cortar");
+    guia.textContent = "Concéntrate en tu pregunta y desliza el dedo sobre el mazo para cortarlo";
+    box.appendChild(btnCortar);
   }, 1300);
 }
 function mostrarPlan(pl) {
@@ -744,8 +880,47 @@ function ampliarCarta(c) {
   const im = document.createElement("img"); im.src = c.imagen; im.alt = c.carta;
   const t = document.createElement("p"); t.textContent = c.carta + (c.invertida ? " (invertida)" : "");
   const mz = document.createElement("div"); mz.className = "marco-z"; const br = document.createElement("span"); br.className = "brillo";
-  mz.append(im, br); chispas(mz, 9); inclinar(mz, z);
-  z.append(mz, t); z.onclick = () => z.remove();
+  const mk = mascaraFoil(c.imagen); if (mk) { const f = document.createElement("span"); f.className = "foil"; mz.style.setProperty("--mask", mk); mz.append(im, f); } else mz.append(im);
+  mz.append(br); chispas(mz, 9); inclinar(mz, z);
+  if (esAgua(c.imagen)) mz.classList.add("agua");
+  z.append(mz, t);
+  // Puntos calientes: 2 o 3 símbolos que laten; al tocarlos se abre una micro-cápsula con su significado.
+  const puntos = window.SIMBOLOS ? SIMBOLOS(c.imagen) : [];
+  if (puntos.length) {
+    const capa = document.createElement("div"); capa.className = "hs-capa"; mz.appendChild(capa);
+    const cuenta = document.createElement("p"); cuenta.className = "hs-cuenta";
+    const vistos = new Set(), pintarCuenta = () => { cuenta.textContent = vistos.size < puntos.length ? `✦ Descubre sus ${puntos.length} símbolos · ${vistos.size}/${puntos.length}` : "✦ Descubriste todos sus símbolos"; };
+    let caps = null;
+    puntos.forEach(([x, y, titulo, texto], i) => {
+      const h = document.createElement("button"); h.type = "button"; h.className = "hs"; h.setAttribute("aria-label", "Símbolo: " + titulo);
+      h.style.left = ((c.invertida ? 1 - x : x) * 100) + "%"; h.style.top = ((c.invertida ? 1 - y : y) * 100) + "%";
+      h.style.animationDelay = (i * 0.5) + "s";
+      h.onclick = (e) => {
+        e.stopPropagation(); vistos.add(i); pintarCuenta(); sonar("roce");
+        capa.querySelectorAll(".hs").forEach((o) => o.classList.remove("activo")); h.classList.add("visto", "activo");
+        if (caps) caps.remove();
+        caps = document.createElement("div"); caps.className = "capsula";
+        const sm = document.createElement("small"); sm.textContent = c.posicion ? "En tu " + c.posicion.toLowerCase() : "Símbolo";
+        const b = document.createElement("b"); b.textContent = titulo;
+        caps.append(sm, b, texto);
+        caps.onclick = (ev) => { ev.stopPropagation(); caps.remove(); caps = null; h.classList.remove("activo"); };
+        capa.appendChild(caps);
+      };
+      capa.appendChild(h);
+    });
+    pintarCuenta(); z.appendChild(cuenta); z.classList.add("extra");
+  }
+  // Capa 2: invitación a profundizar con Arcana en esta carta.
+  if (c.posicion && lectura && lectura.cartas) {
+    const o = document.createElement("button"); o.type = "button"; o.className = "oculto";
+    o.textContent = `✦ Descubrir el mensaje oculto de ${c.carta} en tu situación`;
+    o.onclick = (e) => {
+      e.stopPropagation(); z.remove();
+      send({ texto: `Quiero descubrir el mensaje oculto de ${c.carta}${c.invertida ? " (invertida)" : ""} en la posición «${c.posicion}» de mi tirada. Dame su análisis simbólico profundo aplicado a mi situación.`, visible: `✦ Descubrir el mensaje oculto de ${c.carta}` });
+    };
+    z.appendChild(o); z.classList.add("extra");
+  }
+  z.onclick = () => z.remove();
   document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { z.remove(); document.removeEventListener("keydown", esc); } });
   document.body.appendChild(z);
 }
@@ -798,6 +973,7 @@ async function send(auto) {
     if (j.plan) { bubble.remove(); mostrarPlan(j.plan); log.appendChild(bubble); }
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
     pintarTexto(bubble, j.text);
+    if (lectura && lectura.cartas && !j.baraja) setTimeout(revelarPendientes, 8000); // tiempo para que ella misma las voltee
     // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
     // La imagen solo viaja una vez: en el historial queda una nota para que Arcana no crea que no llegó.
     if (img) entradaUsuario.content = "[Aquí envié la foto de mi tirada. Arcana la vio y la describió en su respuesta siguiente; la imagen ya no se vuelve a adjuntar.] " + entradaUsuario.content;
@@ -950,6 +1126,7 @@ if (SR) {
 }
 </script>
 <script src="/cielo.js?v=4" defer></script>
-<script src="/musica.js?v=4"></script>
+<script src="/musica.js?v=5"></script>
+<script src="/simbolos.js?v=1" defer></script>
 </body>
 </html>
