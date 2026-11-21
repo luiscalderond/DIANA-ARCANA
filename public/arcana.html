@@ -416,7 +416,10 @@ photo.onchange = async () => {
   catch { addMsg("a", "No pude abrir esa foto. Prueba con otra en formato JPG o PNG."); }
 };
 $("clearPhoto").onclick = clearPhoto;
-$("musica").onclick = () => { if (window.Musica) Musica.alternar(); };
+$("musica").onclick = (e) => { e.stopPropagation(); if (window.Musica) Musica.alternar(); };
+// La música empieza con el primer toque en cualquier parte (el navegador no deja sonar sin un toque).
+const arrancarMusica = (e) => { if (e.target.closest && e.target.closest("#musica")) return; if (window.Musica) Musica.iniciar(); ["pointerdown", "touchend", "keydown"].forEach((t) => removeEventListener(t, arrancarMusica)); };
+["pointerdown", "touchend", "keydown"].forEach((t) => addEventListener(t, arrancarMusica));
 $("mute").onclick = () => { voiceOn = !voiceOn; $("mute").firstChild.textContent = voiceOn ? "🔊" : "🔇"; $("mute").setAttribute("aria-pressed", String(voiceOn)); if (!voiceOn) callar(); };
 if (!synth) $("mute").hidden = true;
 
@@ -447,7 +450,7 @@ if (SR) {
   };
 }
 </script>
-<script src="/cielo.js?v=2" defer></script>
-<script src="/musica.js?v=2"></script>
+<script src="/cielo.js?v=3" defer></script>
+<script src="/musica.js?v=3"></script>
 </body>
 </html>

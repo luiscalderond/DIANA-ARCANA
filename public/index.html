@@ -140,8 +140,16 @@ footer .wrap{display:grid;gap:12px}
   .navlinks{display:none}
 }
 #cielo{position:fixed;inset:0;z-index:0;pointer-events:none}
-body>*:not(#cielo):not(.musica-flot):not(script){position:relative;z-index:1}
+body>*:not(#cielo):not(.musica-flot):not(.portal):not(script){position:relative;z-index:1}
 header{background:rgba(22,18,31,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.portal{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;background:radial-gradient(ellipse at 50% 45%,rgba(22,18,31,.55),rgba(10,8,15,.9) 80%);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);transition:opacity .9s ease}
+.portal.fuera{opacity:0;pointer-events:none}
+.portal .marca{font-family:var(--display);font-size:clamp(40px,10vw,64px);font-weight:600;line-height:1}
+.portal .marca em{color:var(--candle);font-style:normal}
+.portal p{margin:0;color:var(--mist);max-width:32ch}
+.portal .btn-gold{font-size:18px;padding:16px 34px}
+.portal small{color:var(--mist);font-size:13px}
+@media (prefers-reduced-motion:no-preference){.portal .btn-gold{animation:latido 2.4s ease-in-out infinite}@keyframes latido{50%{box-shadow:0 0 0 12px rgba(217,180,106,0),0 0 28px rgba(217,180,106,.45)}}}
 .musica-flot{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:40;width:48px;height:48px;border-radius:50%;border:1px solid var(--candle,#d9b46a);background:rgba(22,18,31,.85);color:#d9b46a;font-size:22px;cursor:pointer;display:grid;place-items:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
 .musica-flot[aria-pressed="false"]{opacity:.55}
 </style>
@@ -341,14 +349,28 @@ document.getElementById('agendaForm').addEventListener('submit', function(e){
 })();
 </script>
 
+<div class="portal" id="portal" role="dialog" aria-label="Bienvenida">
+  <div class="marca">Diana <em>Arcana</em></div>
+  <p>Respira profundo. Estás entrando a un espacio sagrado.</p>
+  <button class="btn btn-gold" id="entrar" type="button">Entrar ✦</button>
+  <small>🎵 Con música relajante. Puedes quitarla con el botón 🎵.</small>
+</div>
 <button class="musica-flot" id="musica" type="button" aria-pressed="false" aria-label="Música relajante" title="Música relajante"><span aria-hidden="true">🎵</span></button>
-<script src="/cielo.js?v=2" defer></script>
-<script src="/musica.js?v=2"></script>
+<script src="/cielo.js?v=3" defer></script>
+<script src="/musica.js?v=3"></script>
 <script>
   // Los navegadores no dejan sonar música sin un toque: empieza con el primer toque o tecla.
   document.getElementById("musica").onclick = (e) => { e.stopPropagation(); Musica.alternar(); };
   const arrancar = (e) => { if (e && e.target.closest && e.target.closest("#musica")) return; Musica.iniciar(); removeEventListener("pointerdown", arrancar); removeEventListener("keydown", arrancar); };
-  addEventListener("pointerdown", arrancar); addEventListener("keydown", arrancar);
+  addEventListener("pointerdown", arrancar); addEventListener("keydown", arrancar); addEventListener("touchend", arrancar);
+  // Portal de entrada: el toque en "Entrar" es el permiso que el navegador pide para sonar.
+  const portal = document.getElementById("portal");
+  let visto = false; try { visto = sessionStorage.getItem("arcana-portal") === "1"; } catch {}
+  if (visto) portal.remove();
+  else document.getElementById("entrar").onclick = () => {
+    Musica.iniciar(); portal.classList.add("fuera"); setTimeout(() => portal.remove(), 1000);
+    try { sessionStorage.setItem("arcana-portal", "1"); } catch {}
+  };
 </script>
 </body>
 </html>
