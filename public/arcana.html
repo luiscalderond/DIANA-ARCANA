@@ -265,6 +265,7 @@ async function send() {
   const img = pendingImage;
   const msgU = addMsg("u", text || "Aquí está la foto de mi tirada.", img && img.url);
   historial.push({ role: "user", content: text || "Aquí está la foto de mi tirada." });
+  const entradaUsuario = historial[historial.length - 1];
   box.value = ""; autosize(); clearPhoto();
   busy = true; sendBtn.disabled = true;
   const bubble = addMsg("a thinking", img ? "Arcana está mirando tus cartas…" : "Arcana está pensando…");
@@ -281,6 +282,8 @@ async function send() {
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
     bubble.textContent = j.text;
     // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
+    // La imagen solo viaja una vez: en el historial queda una nota para que Arcana no crea que no llegó.
+    if (img) entradaUsuario.content = "[Aquí envié la foto de mi tirada. Arcana la vio y la describió en su respuesta siguiente; la imagen ya no se vuelve a adjuntar.] " + entradaUsuario.content;
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
     hablar(j.text);
