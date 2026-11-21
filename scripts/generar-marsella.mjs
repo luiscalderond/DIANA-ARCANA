@@ -126,7 +126,6 @@ function pips(palo, n) {
     if (n === 2 && palo === "oros") g += `<path d="M150 125 C60 210 240 315 150 400" fill="none" stroke="${R}" stroke-width="12"/><path d="M150 125 C60 210 240 315 150 400" fill="none" stroke="${Y}" stroke-width="6"/>`;
     if (n % 2 === 0 && palo === "copas") g += `<path d="M150 90 v345" fill="none" stroke="${A}" stroke-width="3"/>` + hojas(150, 262, -60, A) + hojas(150, 262, 60, A) + `<circle cx="150" cy="${n === 4 ? 262 : 262}" r="9" fill="${R}"/>`;
     if (n % 2 === 0 && palo === "oros" && n > 2) g += hojas(150, 280, -50) + hojas(150, 280, 50) + hojas(150, 280, 180);
-    if (n === 4 || n === 6 || n === 8) g += `<path d="M150 82 q-12 -0 0 0" fill="none"/>`;
     return g + POS[n].map(([x, y]) => fn(x, y, s)).join("");
   }
   // espadas y bastos: dos haces paralelos que se cruzan en celosía (estilo marsellés) + uno al centro si es impar
