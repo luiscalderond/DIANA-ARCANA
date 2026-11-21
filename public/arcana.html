@@ -35,6 +35,12 @@ textarea,button{font:inherit}
 .msg.a{background:rgba(33,26,46,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid var(--veil);border-top-left-radius:4px;align-self:flex-start}
 .msg.u{background:var(--veil);border-top-right-radius:4px;align-self:flex-end}
 .msg img{display:block;max-width:220px;max-height:220px;border-radius:10px;margin-top:8px}
+.pdf-flota{position:fixed;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:40;display:flex;align-items:center;gap:4px;padding:4px 4px 4px 4px;border-radius:999px;background:linear-gradient(135deg,#f6dfa0,#c99a45 55%,#e9c47c);box-shadow:0 12px 30px -8px rgba(0,0,0,.75),0 0 26px rgba(246,223,160,.45);transition:opacity .4s,transform .45s cubic-bezier(.2,.8,.2,1);max-width:calc(100vw - 32px)}
+.pdf-flota.ver{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.pdf-flota button{border:0;background:none;cursor:pointer;color:#1a1029;font:700 15px/1.2 inherit;font-family:inherit}
+.pdf-flota .ir{padding:10px 8px 10px 16px;white-space:nowrap}
+.pdf-flota .x{width:32px;height:32px;border-radius:50%;background:rgba(26,16,41,.12);font-size:16px}
+@media (prefers-reduced-motion:no-preference){.pdf-flota.ver{animation:brilloPdf 2.6s ease-in-out infinite}@keyframes brilloPdf{50%{box-shadow:0 12px 30px -8px rgba(0,0,0,.75),0 0 0 8px rgba(246,223,160,0),0 0 40px rgba(246,223,160,.7)}}}
 .msg .tools{display:flex;gap:8px;margin-top:8px}
 .msg.thinking{color:var(--mist);font-style:italic}
 .linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
@@ -269,7 +275,25 @@ function addReplay(d, text) {
   t.appendChild(b); d.appendChild(t);
 }
 /* ---------- PDF de la lectura: se arma en el navegador, sin llamar a la IA (costo $0) ---------- */
+// Botón flotante que invita a descargar la lectura (aparece cuando ya hay lectura).
+let pdfFlota = null, pdfCerrado = false;
+function mostrarPdfFlota() {
+  if (pdfCerrado) return;
+  if (!pdfFlota) {
+    pdfFlota = document.createElement("div"); pdfFlota.className = "pdf-flota"; pdfFlota.setAttribute("role", "region"); pdfFlota.setAttribute("aria-label", "Descargar tu lectura");
+    const ir = document.createElement("button"); ir.type = "button"; ir.className = "ir"; ir.textContent = "📜 Tu lectura está lista · Descargar PDF";
+    const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.setAttribute("aria-label", "Cerrar"); x.textContent = "✕";
+    ir.onclick = async () => { ir.disabled = true; const t = ir.textContent; ir.textContent = "Preparando tu PDF…"; try { await generarPdf(); } catch (e) { console.error(e); } ir.textContent = t; ir.disabled = false; };
+    x.onclick = () => { pdfCerrado = true; pdfFlota.classList.remove("ver"); log.style.paddingBottom = ""; };
+    pdfFlota.append(ir, x); document.body.appendChild(pdfFlota);
+  }
+  const bar = document.querySelector(".bar");
+  pdfFlota.style.bottom = ((bar ? bar.getBoundingClientRect().height : 120) + 12) + "px";
+  log.style.paddingBottom = "76px";  // que el botón no tape el final de la lectura
+  requestAnimationFrame(() => pdfFlota.classList.add("ver"));
+}
 function botonPdf(bubble) {
+  mostrarPdfFlota();
   let t = bubble.querySelector(".tools");
   if (!t) { t = document.createElement("div"); t.className = "tools"; bubble.appendChild(t); }
   const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn"; b.textContent = "📜 Guardar mi lectura en PDF";
@@ -435,6 +459,7 @@ async function generarPdf() {
   doc.save(archivo);
 }
 function mostrarCartas(cartas) {
+  pdfCerrado = false; if (pdfFlota) pdfFlota.classList.remove("ver");
   lectura = { nombre: nombreTirada || "Tu tirada", cartas, foto: null, textos: [] };
   const s = document.createElement("div"); s.className = "spread" + (cartas.length > 5 ? " muchas" : ""); s.setAttribute("aria-label", "Cartas de tu tirada");
   cartas.forEach((c, i) => {
