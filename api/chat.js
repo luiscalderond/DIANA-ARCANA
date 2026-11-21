@@ -66,7 +66,7 @@ export default async function handler(req, res) {
   let cobro = null, bloqueo = null;
   async function cobrar() {
     if (cobro) return cobro;
-    try { cobro = await usarConsulta({ dispositivo: body.dispositivo, ip, pais: req.headers["x-vercel-ip-country"] }); }
+    try { cobro = await usarConsulta({ dispositivo: body.dispositivo, ip, pais: req.headers["x-vercel-ip-country"], ref: typeof body.ref === "string" ? body.ref.toUpperCase() : "" }); }
     catch (e) { console.error("Acceso", e); cobro = { permitido: false, error: true }; }
     if (!cobro.permitido && !cobro.error) bloqueo = { suscripcion: true, pendiente: cobro.pendiente, agotado: cobro.agotado || undefined, ...datosDeposito() };
     return cobro;

@@ -179,6 +179,14 @@ const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toSt
 let dispositivo;
 try { dispositivo = localStorage.getItem("arcana-dispositivo"); if (!dispositivo) { dispositivo = nuevoId(); localStorage.setItem("arcana-dispositivo", dispositivo); } } catch { dispositivo = nuevoId(); }
 let consulta = nuevoId();
+// Referidas: código propio (para el QR del PDF) y código de quien la invitó (llega como ?ref=XXXXXX).
+const miCodigo = String(dispositivo).replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
+let refDe = "";
+try {
+  const r = (new URLSearchParams(location.search).get("ref") || "").toUpperCase();
+  if (/^[A-Z0-9]{6}$/.test(r) && r !== miCodigo && !localStorage.getItem("arcana-ref")) localStorage.setItem("arcana-ref", r);
+  refDe = localStorage.getItem("arcana-ref") || "";
+} catch {}
 let busy = false, started = false, voiceOn = true, pendingImage = null;
 let lectura = null, nombreTirada = "";   // lectura actual para el PDF: { nombre, cartas, foto, textos }
 
@@ -284,6 +292,79 @@ function imagenJpg(src, invertida) {
 }
 // jsPDF con letra estándar: solo caracteres latinos (quita emojis y símbolos).
 const latino = (t) => String(t).replace(/[^\x20-\x7E -ÿ\n]/g, "").replace(/[ \t]+\n/g, "\n").trim();
+// Preguntas abiertas según los palos que salieron: despiertan curiosidad por otra consulta (sin miedo ni urgencia).
+const PREGUNTAS = {
+  copas: ["¿Qué siente de verdad esa persona por ti?", "Tirada de pareja"],
+  pentaculos: ["¿Cuándo llega la abundancia que estás esperando?", "Tirada de la herradura"],
+  espadas: ["¿Qué camino te conviene en esa decisión que te quita el sueño?", "Tirada de decisión"],
+  bastos: ["¿Hacia dónde te lleva la energía de tus nuevos proyectos?", "Tirada del camino de vida"],
+  mayor: ["¿Cuál es la misión que tu alma vino a cumplir?", "Registros akáshicos"],
+  anual: ["¿Qué te traen los próximos 12 meses, mes a mes?", "Tirada anual"],
+  astral: ["¿Cómo influyen tus astros en este momento de tu vida?", "Tu carta astral"],
+};
+function preguntasAbiertas() {
+  const palo = (n) => /Copas/.test(n) ? "copas" : /Pent|Oros/.test(n) ? "pentaculos" : /Espadas/.test(n) ? "espadas" : /Bastos/.test(n) ? "bastos" : "mayor";
+  const claves = [...new Set([...(lectura.cartas || []).map((c) => palo(c.carta)), "anual", "astral", "copas"])];
+  return claves.slice(0, 3).map((k) => PREGUNTAS[k]);
+}
+async function paginaInvitacion(doc, fondo, W, H, M) {
+  doc.addPage(); fondo();
+  let y = 28;
+  doc.setFont("times", "bold"); doc.setFontSize(22); doc.setTextColor(246, 223, 160);
+  doc.text("Lo que tus cartas aún quieren contarte", W / 2, y, { align: "center" }); y += 7;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(181, 170, 196);
+  doc.text("Tu lectura abrió nuevas preguntas. Arcana puede ayudarte a responderlas:", W / 2, y, { align: "center" }); y += 9;
+  for (const [preg, tirada] of preguntasAbiertas()) {
+    doc.setFillColor(42, 22, 74); doc.setDrawColor(201, 154, 69); doc.setLineWidth(0.3);
+    doc.roundedRect(M, y, W - 2 * M, 18, 3, 3, "FD");
+    doc.setFont("times", "bolditalic"); doc.setFontSize(13); doc.setTextColor(239, 232, 245);
+    doc.text(latino(preg), M + 6, y + 7.5);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(246, 223, 160);
+    doc.text(latino("Pídele a Arcana: " + tirada), M + 6, y + 13.5);
+    y += 22;
+  }
+  // Diana y sus servicios
+  y += 6;
+  doc.setDrawColor(201, 154, 69); doc.line(W / 2 - 25, y, W / 2 + 25, y); y += 10;
+  doc.setFont("times", "bold"); doc.setFontSize(18); doc.setTextColor(242, 184, 200);
+  doc.text("Conoce a Diana", M, y); y += 7;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(239, 232, 245);
+  for (const l of doc.splitTextToSize(latino("Diana es tarotista y guía espiritual en Quito. Creó a Arcana para acompañarte a cualquier hora, con su forma de leer y su cuidado. Las limpiezas energéticas las hace ella en persona."), W - 2 * M)) { doc.text(l, M, y); y += 5.2; }
+  doc.setFont("times", "italic"); doc.setFontSize(12); doc.setTextColor(246, 223, 160);
+  doc.text(latino("“Las cartas no deciden por ti: iluminan el camino para que elijas con el corazón.”"), M, y + 4); y += 13;
+  const servicios = [["Tarot", "de 1 a 10 cartas, con tu mazo o en pantalla"], ["Carta astral", "con las posiciones reales de tus planetas"], ["Rituales personalizados", "amor, abundancia y protección"], ["Registros akáshicos", "la memoria de tu alma"], ["Limpieza energética", "en persona con Diana, con cita"]];
+  doc.setFontSize(10.5);
+  for (const [n, d] of servicios) {
+    doc.setFillColor(201, 154, 69); doc.circle(M + 1.5, y - 1.3, 0.9, "F");
+    doc.setFont("helvetica", "bold"); doc.setTextColor(239, 232, 245); doc.text(latino(n), M + 5, y);
+    const w = doc.getTextWidth(latino(n));
+    doc.setFont("helvetica", "normal"); doc.setTextColor(181, 170, 196); doc.text(latino(" · " + d), M + 5 + w, y);
+    y += 6.2;
+  }
+  // Regala una lectura: QR con código de referida
+  y = Math.max(y + 8, H - 92);
+  const url = `${location.origin}/?ref=${miCodigo}`;
+  doc.setFillColor(58, 16, 52); doc.setDrawColor(242, 184, 200); doc.setLineWidth(0.4);
+  doc.roundedRect(M, y, W - 2 * M, 62, 4, 4, "FD");
+  const q = 46, qx = W - M - q - 8, qy = y + 8;
+  try {
+    if (!window.qrcode) await cargarScript("/vendor/qrcode.js");
+    const qr = qrcode(0, "M"); qr.addData(url); qr.make();
+    const n = qr.getModuleCount(), cel = (q - 4) / n;
+    doc.setFillColor(255, 255, 255); doc.roundedRect(qx, qy, q, q, 2, 2, "F");
+    doc.setFillColor(26, 16, 41);
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) doc.rect(qx + 2 + c * cel, qy + 2 + r * cel, cel + 0.02, cel + 0.02, "F");
+  } catch (e) { console.error("QR", e); }
+  doc.setFont("times", "bold"); doc.setFontSize(19); doc.setTextColor(246, 223, 160);
+  doc.text("Regala una lectura", M + 8, y + 15);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(239, 232, 245);
+  const tx = doc.splitTextToSize(latino("Comparte este código con una amiga que necesite claridad. Al escanearlo recibe sus 2 primeras consultas gratis con Arcana."), qx - M - 16);
+  doc.text(tx, M + 8, y + 23);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(242, 184, 200);
+  doc.text(latino("Tu código de referida: " + miCodigo), M + 8, y + 23 + tx.length * 5 + 5);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(181, 170, 196);
+  doc.text(latino(url.replace(/^https?:\/\//, "")), M + 8, y + 54);
+}
 async function generarPdf() {
   if (!lectura) return;
   if (!window.jspdf) await cargarScript("/vendor/jspdf.umd.min.js");
@@ -343,6 +424,7 @@ async function generarPdf() {
   if (y > H - 40) { doc.addPage(); fondo(); y = 24; }
   doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(181, 170, 196);
   doc.text(doc.splitTextToSize("Lectura de Arcana, asistente virtual de Diana. Es una guía de autoconocimiento y no reemplaza consejo médico, legal ni financiero.", W - 2 * M), M, y + 6);
+  await paginaInvitacion(doc, fondo, W, H, M);
   const archivo = "lectura-diana-arcana.pdf";
   const blob = doc.output("blob");
   const file = new File([blob], archivo, { type: "application/pdf" });
@@ -494,7 +576,7 @@ async function send(auto) {
   try {
     const r = await fetch("/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dispositivo, consulta, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
+      body: JSON.stringify({ dispositivo, consulta, ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");

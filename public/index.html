@@ -544,6 +544,8 @@ document.getElementById('agendaForm').addEventListener('submit', function(e){
   document.getElementById("musica").onclick = (e) => { e.stopPropagation(); Musica.alternar(); };
   const arrancar = (e) => { if (e && e.target.closest && e.target.closest("#musica")) return; Musica.iniciar(); removeEventListener("pointerdown", arrancar); removeEventListener("keydown", arrancar); };
   addEventListener("pointerdown", arrancar); addEventListener("keydown", arrancar); addEventListener("touchend", arrancar);
+  // Referidas: si llega con ?ref=XXXXXX, se guarda para la primera consulta.
+  try { const r = (new URLSearchParams(location.search).get("ref") || "").toUpperCase(); if (/^[A-Z0-9]{6}$/.test(r) && !localStorage.getItem("arcana-ref")) localStorage.setItem("arcana-ref", r); } catch {}
   // Botón flotante: aparece al bajar del héroe y se oculta al final de la página.
   const flota = document.getElementById("flota");
   const verFlota = () => flota.classList.toggle("ver", scrollY > innerHeight * 0.7 && innerHeight + scrollY < document.body.scrollHeight - 120);
