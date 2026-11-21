@@ -16,17 +16,21 @@
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-.app{height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header{display:flex;align-items:center;gap:12px;padding-block:14px;border-bottom:1px solid var(--veil);flex-wrap:wrap}
+#cielo{position:fixed;inset:0;z-index:0;pointer-events:none}
+.telescopio{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 85% 75% at 50% 45%,transparent 55%,rgba(8,6,14,.55) 85%,rgba(8,6,14,.85) 100%)}
+.telescopio::after{content:"";position:absolute;left:50%;top:45%;width:min(78vw,620px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(217,180,106,.07);box-shadow:0 0 0 18px rgba(217,180,106,.025)}
+.app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{background:rgba(22,18,31,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);margin-inline:-16px;padding-inline:16px;display:flex;align-items:center;gap:12px;padding-block:14px;border-bottom:1px solid var(--veil);flex-wrap:wrap}
 .back{color:var(--mist);text-decoration:none;font-size:22px;padding-right:4px}
 .avatar{width:44px;height:44px;border-radius:50%;border:1px solid var(--candle);display:grid;place-items:center;font-family:var(--label);color:var(--candle);font-size:18px;flex:none}
 .who{flex:1;min-width:0}
 .who b{font-family:var(--display);font-size:24px;font-weight:600;display:block;line-height:1.1}
-.who small{color:var(--mist);font-size:13px}
+.who small{color:var(--mist);font-size:13px;white-space:nowrap}
+@media (max-width:480px){header .linkbtn{font-size:12px}.who b{font-size:21px}header{gap:8px}}
 textarea,button{font:inherit}
 .log{flex:1;overflow-y:auto;padding-block:20px;display:flex;flex-direction:column;gap:14px;min-height:0}
 .msg{max-width:88%;padding:12px 16px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere}
-.msg.a{background:var(--cloth);border:1px solid var(--veil);border-top-left-radius:4px;align-self:flex-start}
+.msg.a{background:rgba(33,26,46,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid var(--veil);border-top-left-radius:4px;align-self:flex-start}
 .msg.u{background:var(--veil);border-top-right-radius:4px;align-self:flex-end}
 .msg img{display:block;max-width:220px;max-height:220px;border-radius:10px;margin-top:8px}
 .msg .tools{display:flex;gap:8px;margin-top:8px}
@@ -69,7 +73,7 @@ textarea,button{font:inherit}
 .welcome p{color:var(--mist);max-width:46ch;margin:0}
 .eyebrow{font-family:var(--label);letter-spacing:.18em;font-size:12px;color:var(--candle);text-transform:uppercase}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:999px;border:1px solid var(--candle);background:var(--candle);color:var(--night);font-weight:700;cursor:pointer}
-.bar{border-top:1px solid var(--veil);padding-block:12px;display:flex;flex-direction:column;gap:8px}
+.bar{background:rgba(22,18,31,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);margin-inline:-16px;padding-inline:16px;border-top:1px solid var(--veil);padding-block:12px;display:flex;flex-direction:column;gap:8px}
 .preview{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mist)}
 .preview img{height:48px;border-radius:6px}
 .row{display:flex;gap:8px;align-items:flex-end}
@@ -97,6 +101,8 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 </style>
 </head>
 <body>
+<canvas id="cielo" aria-hidden="true"></canvas>
+<div class="telescopio" aria-hidden="true"></div>
 <div class="app">
   <header>
     <a class="back" href="/" aria-label="Volver a la página de inicio">‹</a>
@@ -120,7 +126,7 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
     <div class="row">
       <button class="icon" id="photoBtn" type="button" aria-label="Tomar o subir foto de las cartas" title="Foto de las cartas">📷</button>
       <input type="file" id="photo" accept="image/jpeg,image/png,image/webp,image/heic,image/*" capture="environment" hidden>
-      <textarea id="box" rows="1" placeholder="Escribe o toca el micrófono para hablar" aria-label="Tu mensaje"></textarea>
+      <textarea id="box" rows="1" placeholder="Escribe o habla…" aria-label="Tu mensaje"></textarea>
       <button class="icon" id="mic" type="button" aria-label="Hablar" title="Hablar" hidden>🎙</button>
       <button class="icon send" id="send" type="button" aria-label="Enviar">➤</button>
     </div>
@@ -435,5 +441,6 @@ if (SR) {
   };
 }
 </script>
+<script src="/cielo.js" defer></script>
 </body>
 </html>
