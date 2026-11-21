@@ -97,6 +97,7 @@ textarea,button{font:inherit}
 .lc-copiar{background:transparent;color:var(--ink);border:1px solid rgba(242,184,200,.7)}
 .lectura-card .tools{justify-content:center;padding:14px 14px 18px;margin:0}
 .lectura-card .tools .linkbtn{border:1px solid rgba(217,180,106,.5);border-radius:999px;padding:9px 16px;font-size:14px}
+.msg.sugerencia .linkbtn{margin-top:8px;border:1px solid rgba(217,180,106,.6);border-radius:999px;padding:8px 14px;font-size:14px}
 .linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
 .spread{align-self:stretch;display:flex;flex-wrap:wrap;gap:12px 10px;justify-content:center;padding:14px 10px 16px;border-radius:18px;position:relative;
   background:url(/terciopelo.svg),url(/geometria.svg) center/120px,radial-gradient(ellipse at 50% 28%,#2a1638 0%,#150b1f 55%,#07050b 100%);
@@ -153,6 +154,7 @@ textarea,button{font:inherit}
 .hs.activo{opacity:1;background:radial-gradient(circle,#fff 0 22%,rgba(255,214,120,.9) 32%,rgba(255,214,120,0) 66%)}
 @keyframes latido{50%{transform:scale(1.2)}}@keyframes onda{from{transform:scale(.55);opacity:1}to{transform:scale(1.7);opacity:0}}
 .capsula{position:absolute;left:5%;right:5%;bottom:13%;pointer-events:auto;cursor:pointer;background:rgba(14,9,24,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(217,180,106,.7);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;color:#efe4f2;box-shadow:0 10px 30px rgba(0,0,0,.6);animation:aparece .3s ease-out both}
+.capsula .explorar{display:block;margin-top:8px;border:1px solid var(--candle);background:rgba(217,180,106,.14);color:#f6e7bf;border-radius:999px;padding:6px 12px;font:600 13px var(--body);cursor:pointer}
 .capsula b{display:block;font-family:var(--display);font-size:18px;color:#f3d99a;font-weight:600}
 .capsula small{display:block;color:var(--candle);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
 @keyframes aparece{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -874,6 +876,18 @@ function mostrarDiagrama(d) {
   box.append(t, mesa, ol);
   log.appendChild(box); log.scrollTop = log.scrollHeight;
 }
+const simbolosSugeridos = new Set();
+function explorarSimbolo(titulo, c) {
+  send({ texto: `En mi tirada me llamó la atención ${titulo.charAt(0).toLowerCase() + titulo.slice(1)} de ${c.carta}${c.invertida ? " (invertida)" : ""}, en la posición «${c.posicion}». ¿Qué me quiere mostrar ese símbolo en mi situación? Respóndeme breve y termina con una pregunta para profundizar.`, visible: `✦ Explorar ${titulo.charAt(0).toLowerCase() + titulo.slice(1)} de ${c.carta}` });
+}
+function sugerirSimbolo(titulo, c) {
+  const clave = c.carta + "|" + titulo; if (simbolosSugeridos.has(clave)) return; simbolosSugeridos.add(clave);
+  const t = titulo.charAt(0).toLowerCase() + titulo.slice(1);
+  const d = addMsg("a sugerencia", `Veo que te llamó la atención ${t} de ${c.carta}. ¿Quieres explorar qué te quiere decir sobre tu ${c.posicion.toLowerCase()}?`);
+  const bt = document.createElement("button"); bt.type = "button"; bt.className = "linkbtn"; bt.textContent = "✦ Sí, quiero explorarlo";
+  bt.onclick = () => { bt.disabled = true; explorarSimbolo(titulo, c); };
+  d.appendChild(document.createElement("br")); d.appendChild(bt);
+}
 function ampliarCarta(c) {
   if (!c.imagen) return;
   const z = document.createElement("div"); z.className = "zoom" + (c.invertida ? " inv" : ""); z.setAttribute("role", "dialog"); z.setAttribute("aria-label", c.carta);
@@ -890,7 +904,7 @@ function ampliarCarta(c) {
     const capa = document.createElement("div"); capa.className = "hs-capa"; mz.appendChild(capa);
     const cuenta = document.createElement("p"); cuenta.className = "hs-cuenta";
     const vistos = new Set(), pintarCuenta = () => { cuenta.textContent = vistos.size < puntos.length ? `✦ Descubre sus ${puntos.length} símbolos · ${vistos.size}/${puntos.length}` : "✦ Descubriste todos sus símbolos"; };
-    let caps = null;
+    let caps = null, ultimo = null;
     puntos.forEach(([x, y, titulo, texto], i) => {
       const h = document.createElement("button"); h.type = "button"; h.className = "hs"; h.setAttribute("aria-label", "Símbolo: " + titulo);
       h.style.left = ((c.invertida ? 1 - x : x) * 100) + "%"; h.style.top = ((c.invertida ? 1 - y : y) * 100) + "%";
@@ -903,12 +917,20 @@ function ampliarCarta(c) {
         const sm = document.createElement("small"); sm.textContent = c.posicion ? "En tu " + c.posicion.toLowerCase() : "Símbolo";
         const b = document.createElement("b"); b.textContent = titulo;
         caps.append(sm, b, texto);
+        ultimo = { titulo, carta: c.carta, posicion: c.posicion };
+        if (c.posicion && lectura && lectura.cartas) {
+          const ex = document.createElement("button"); ex.type = "button"; ex.className = "explorar"; ex.textContent = "✦ Explorar esto con Arcana";
+          ex.onclick = (ev) => { ev.stopPropagation(); ultimo = null; z.remove(); explorarSimbolo(titulo, c); };
+          caps.appendChild(ex);
+        }
         caps.onclick = (ev) => { ev.stopPropagation(); caps.remove(); caps = null; h.classList.remove("activo"); };
         capa.appendChild(caps);
       };
       capa.appendChild(h);
     });
     pintarCuenta(); z.appendChild(cuenta); z.classList.add("extra");
+    // Al cerrar, Arcana sugiere profundizar en el último símbolo que tocó (sin gastar IA hasta que ella acepte).
+    z._sugerir = () => { if (ultimo && c.posicion && lectura && lectura.cartas) sugerirSimbolo(ultimo.titulo, c); };
   }
   // Capa 2: invitación a profundizar con Arcana en esta carta.
   if (c.posicion && lectura && lectura.cartas) {
@@ -920,8 +942,8 @@ function ampliarCarta(c) {
     };
     z.appendChild(o); z.classList.add("extra");
   }
-  z.onclick = () => z.remove();
-  document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { z.remove(); document.removeEventListener("keydown", esc); } });
+  z.onclick = () => { z.remove(); if (z._sugerir) z._sugerir(); };
+  document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { z.remove(); if (z._sugerir) z._sugerir(); document.removeEventListener("keydown", esc); } });
   document.body.appendChild(z);
 }
 
