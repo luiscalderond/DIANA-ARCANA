@@ -32,6 +32,17 @@ export default async function handler(req, res) {
       let c;
       try { c = await cu.cuentaDeToken(cu.tokenDe(req)); } catch (e) { console.error("Cuentas sin tablas", e); return res.status(503).json({ error: "Las cuentas aún no están activas." }); }
       if (!c) return res.status(401).json({ error: "Tu sesión terminó. Vuelve a entrar." });
+      const u = new URL(req.url || "/", "http://x");
+      if (u.searchParams.get("ver") === "historial") {
+        try { return res.status(200).json({ lecturas: await cu.listarLecturas(c.id) }); }
+        catch (e) { return res.status(200).json({ lecturas: [], aviso: "El historial estará disponible muy pronto." }); }
+      }
+      const id = u.searchParams.get("lectura");
+      if (id) {
+        if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: "Lectura no válida." });
+        const l = await cu.obtenerLectura(c.id, id).catch(() => null);
+        return l ? res.status(200).json({ lectura: l }) : res.status(404).json({ error: "No encontré esa lectura." });
+      }
       return res.status(200).json({ cuenta: publica(c) });
     }
     if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
@@ -109,7 +120,15 @@ export default async function handler(req, res) {
       const datos = c.datos || {};
       datos.lecturas = [r, ...(datos.lecturas || [])].slice(0, 8);
       await cu.guardarDatosCuenta(c.id, datos);
-      return res.status(200).json({ ok: true, cuenta: publica({ ...c, datos }) });
+      // La lectura completa va al historial (si la tabla aún no existe, no pasa nada).
+      let idHistorial = null;
+      if (b.completa && typeof b.completa === "object") idHistorial = await cu.guardarLecturaCompleta(c.id, b.completa).catch((e) => { console.error("Historial", e.message); return null; });
+      return res.status(200).json({ ok: true, idHistorial, cuenta: publica({ ...c, datos }) });
+    }
+    if (b.accion === "lectura_act") {
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.id || ""))) return res.status(400).json({ error: "Lectura no válida." });
+      await cu.actualizarLecturaCompleta(c.id, b.id, b.textos).catch(() => {});
+      return res.status(200).json({ ok: true });
     }
     return res.status(400).json({ error: "Acción no válida." });
   } catch (e) {

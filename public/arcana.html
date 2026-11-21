@@ -207,6 +207,25 @@ textarea,button{font:inherit}
 .plan li.tocable div::after{content:"Toca para ir aquí ›";display:block;color:var(--candle);font-size:12px;margin-top:2px}
 .pdf-opciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;flex-basis:100%;width:100%}
 .pdf-op{border:1px solid var(--candle);background:rgba(217,180,106,.1);color:#f6e7bf;border-radius:999px;padding:8px 14px;font:600 14px var(--body);text-decoration:none;cursor:pointer}
+.historial{position:fixed;inset:0;z-index:60;background:rgba(10,7,18,.72);display:flex;justify-content:center;align-items:flex-end}
+.historial .hoja{background:var(--cloth);border:1px solid var(--candle);border-bottom:0;border-radius:18px 18px 0 0;width:min(640px,100%);max-height:88vh;display:flex;flex-direction:column}
+.historial .cab{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px}
+.historial h2{margin:0;font-family:var(--display);font-size:26px;font-weight:600}
+.historial h3{margin:6px 0 0;font-family:var(--display);font-size:24px;font-weight:600}
+.historial .cerrar{border:0;background:rgba(255,255,255,.08);color:var(--ink);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer}
+.historial .cuerpo{overflow-y:auto;padding:4px 18px 24px;display:flex;flex-direction:column;gap:10px}
+.historial .sub{margin:0;color:var(--mist);font-size:14px}
+.historial .item{display:grid;gap:3px;text-align:left;border:1px solid var(--veil);background:var(--night);color:var(--ink);border-radius:12px;padding:12px 14px;cursor:pointer;font:inherit}
+.historial .item:hover{border-color:var(--candle)}
+.historial .item b{font-size:16px}.historial .item small{color:var(--mist);font-size:13px}
+.historial .linkbtn{align-self:flex-start}
+.historial .mini-cartas{display:flex;gap:8px;overflow-x:auto;padding:4px 0}
+.historial .mini-cartas figure{margin:0;flex:0 0 64px;text-align:center}
+.historial .mini-cartas img{width:64px;border-radius:6px;display:block}
+.historial .mini-cartas figcaption{font-size:11px;color:var(--mist);margin-top:3px}
+.historial .texto{display:flex;flex-direction:column;gap:12px;line-height:1.55}
+.historial .acc{display:grid;gap:8px;margin-top:6px}.historial .acc .btn{justify-content:center}
+.historial .btn.sec{background:transparent;color:var(--candle)}
 .plan .empezar{justify-content:center;font-size:16px}
 .plan.usado .empezar,.plan.usado .empezar+.sub{display:none}
 .plan.usado li.tocable div::after{content:none}
@@ -303,6 +322,7 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
     <div class="avatar" aria-hidden="true">A</div>
     <div class="who"><b>Arcana</b><small>Asistente virtual de Diana</small></div>
     <button class="linkbtn" id="nueva" type="button">✦ Nueva consulta</button>
+    <button class="linkbtn hbtn" id="historial" type="button" aria-label="Mi historial de lecturas" title="Mi historial" hidden><span aria-hidden="true">📖</span></button>
     <button class="linkbtn hbtn" id="musica" type="button" aria-pressed="false" aria-label="Música relajante" title="Música relajante"><span aria-hidden="true">🎵</span></button>
     <button class="linkbtn hbtn" id="mute" type="button" aria-pressed="true" aria-label="Voz de Arcana" title="Voz de Arcana"><span aria-hidden="true">🔊</span></button>
   </header>
@@ -367,13 +387,14 @@ function guardarPerfil(p) {
 // Después de cada lectura se guarda un resumen corto para retomarla en la próxima visita.
 function recordarLectura(texto) {
   if (!perfil || !lectura) return;
+  const lecturaActual = lectura;
   const lineas = String(texto).split("\n").map((l) => l.trim()).filter(Boolean);
   const titulos = lineas.map((l, i) => (/^✦/.test(l) ? i : -1)).filter((i) => i >= 0);
   const revel = titulos.length >= 3 && lineas[titulos[2] + 1] ? lineas[titulos[2] + 1].split(/(?<=[.!?])\s/)[0] : lineas.find((l) => !/^✦/.test(l)) || "";
   const gancho = (lineas.find((l) => /^🔮/.test(l)) || "").replace(/^🔮\s*/, "");
   const r = { f: new Date().toISOString().slice(0, 10), t: lectura.nombre || "tirada", c: lectura.cartas ? lectura.cartas.map((c) => c.carta + (c.invertida ? " (inv.)" : "")).join(", ") : "con su propio mazo", x: (revel.slice(0, 200) + (gancho ? " | Quedó abierto: " + gancho.slice(0, 160) : "")).trim() };
   perfil.lecturas = [r, ...(perfil.lecturas || [])].slice(0, 8);
-  if (cuenta) fetch("/api/cuenta", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ accion: "lectura", lectura: r }) }).then((x) => x.json()).then((j) => { if (j.cuenta) ponerCuenta(j.cuenta); }).catch(() => {});
+  if (cuenta) fetch("/api/cuenta", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ accion: "lectura", lectura: r, completa: { nombre: lectura.nombre, cartas: lectura.cartas, textos: lectura.textos } }) }).then((x) => x.json()).then((j) => { if (j.cuenta) ponerCuenta(j.cuenta); if (j.idHistorial && lecturaActual === lectura) lectura.idHist = j.idHistorial; }).catch(() => {});
   guardarUsuarios();
 }
 function perfilParaEnviar() {
@@ -446,6 +467,63 @@ function ponerCuenta(c) {
   miCodigo = String(dispositivo).replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
   const d = c.datos || {};
   perfil = { id: c.id, nombre: c.nombre, fecha: d.fecha, ciudad: d.ciudad, otros: d.otros || [], lecturas: d.lecturas || [] };
+  actualizarBotonHistorial();
+}
+function actualizarBotonHistorial() { const h = $("historial"); if (h) h.hidden = !cuenta; }
+// Las respuestas que siguen a la lectura (preguntas sobre las cartas) también quedan en el historial.
+let temporizadorHistorial = null;
+function actualizarHistorial() {
+  if (!cuenta || !lectura || !lectura.idHist) return;
+  const l = lectura; clearTimeout(temporizadorHistorial);
+  temporizadorHistorial = setTimeout(() => fetch("/api/cuenta", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ accion: "lectura_act", id: l.idHist, textos: l.textos }) }).catch(() => {}), 1500);
+}
+const fechaLarga = (x) => new Date(x).toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" });
+// Panel «Mi historial»: lista de lecturas, detalle con PDF y opción de retomarla con Arcana.
+async function mostrarHistorial() {
+  callar();
+  let panel = $("panelHistorial");
+  if (!panel) {
+    panel = el("div", { id: "panelHistorial", class: "historial", role: "dialog", "aria-modal": "true", "aria-label": "Mi historial" });
+    panel.onclick = (e) => { if (e.target === panel) panel.remove(); };
+    document.body.appendChild(panel);
+  }
+  const cerrar = el("button", { type: "button", class: "cerrar", "aria-label": "Cerrar", text: "✕" }); cerrar.onclick = () => panel.remove();
+  const cuerpo = el("div", { class: "cuerpo" }, el("p", { class: "sub", text: "Cargando tus lecturas…" }));
+  panel.replaceChildren(el("div", { class: "hoja" }, el("div", { class: "cab" }, el("h2", { text: "📖 Mi historial" }), cerrar), cuerpo));
+  const r = await fetch("/api/cuenta?ver=historial", { headers: conSesion() }).catch(() => null);
+  const j = r ? await r.json().catch(() => ({})) : {};
+  if (!r || !r.ok) { cuerpo.replaceChildren(el("p", { class: "sub", text: j.error || "No hay conexión. Intenta de nuevo." })); return; }
+  const ls = j.lecturas || [];
+  if (!ls.length) { cuerpo.replaceChildren(el("p", { class: "sub", text: j.aviso || "Aquí aparecerán tus lecturas. Cuando termines tu primera tirada, la encontrarás guardada para releerla o descargarla." })); return; }
+  cuerpo.replaceChildren(el("p", { class: "sub", text: `${ls.length} ${ls.length === 1 ? "lectura guardada" : "lecturas guardadas"}. Toca una para abrirla.` }),
+    ...ls.map((l) => {
+      const b = el("button", { type: "button", class: "item" }, el("b", { text: l.nombre }), el("small", { text: fechaLarga(l.creada) + (l.cartas && l.cartas.length ? " · " + l.cartas.map((c) => c.carta + (c.invertida ? " (inv.)" : "")).join(", ") : " · con tu propio mazo") }));
+      b.onclick = () => abrirLecturaGuardada(l.id, cuerpo);
+      return b;
+    }));
+}
+async function abrirLecturaGuardada(id, cuerpo) {
+  cuerpo.replaceChildren(el("p", { class: "sub", text: "Abriendo tu lectura…" }));
+  const r = await fetch("/api/cuenta?lectura=" + encodeURIComponent(id), { headers: conSesion() }).catch(() => null);
+  const j = r ? await r.json().catch(() => ({})) : {};
+  if (!r || !r.ok || !j.lectura) { cuerpo.replaceChildren(el("p", { class: "sub", text: j.error || "No pude abrirla. Intenta de nuevo." })); return; }
+  const l = j.lectura;
+  const volver = el("button", { type: "button", class: "linkbtn", text: "‹ Todas mis lecturas" }); volver.onclick = mostrarHistorial;
+  // Se pinta con la misma plantilla de la lectura original (cartas, títulos y fecha de ese día).
+  const guardada = { nombre: l.nombre, cartas: l.cartas && l.cartas.length ? l.cartas : null, foto: null, textos: l.textos || [], fecha: l.creada };
+  const antes = lectura; lectura = guardada;
+  const texto = el("div", { class: "texto" });
+  try { guardada.textos.forEach((t) => { const p = el("div", { class: "parte" }); pintarTexto(p, t); texto.append(p); }); } finally { lectura = antes; }
+  const pdf = el("button", { type: "button", class: "btn", text: "📜 Descargar en PDF" });
+  pdf.onclick = async () => {
+    pdf.disabled = true; const antes = lectura; lectura = guardada;
+    try { opcionesPdf(pdf, await generarPdf()); } catch (e) { console.error(e); pdf.textContent = "No pude crear el PDF. Toca para intentar otra vez."; } finally { lectura = antes; pdf.disabled = false; }
+  };
+  const retomar = el("button", { type: "button", class: "btn sec", text: "✦ Retomar esta lectura con Arcana" });
+  retomar.onclick = () => { $("panelHistorial").remove(); send({ texto: `Quiero retomar mi lectura «${l.nombre}» del ${fechaLarga(l.creada)}.`, visible: `✦ Retomar mi lectura «${l.nombre}»` }); };
+  const plantilla = texto.querySelector(".lectura-card, .lc-head");
+  cuerpo.replaceChildren(volver, ...(plantilla ? [] : [el("h3", { text: l.nombre }), el("p", { class: "sub", text: fechaLarga(l.creada) })]), texto, el("div", { class: "acc" }, pdf, retomar));
+  cuerpo.scrollTop = 0;
 }
 function guardarToken(t) { token = t || ""; try { t ? localStorage.setItem("arcana-token", t) : localStorage.removeItem("arcana-token"); } catch {} }
 const revisandoCuenta = (async () => {
@@ -458,7 +536,7 @@ const revisandoCuenta = (async () => {
 })();
 async function cerrarSesion() {
   fetch("/api/cuenta", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ accion: "salir" }) }).catch(() => {});
-  guardarToken(""); cuenta = null; perfil = null; dispositivo = legado;
+  guardarToken(""); cuenta = null; perfil = null; dispositivo = legado; actualizarBotonHistorial(); const ph = $("panelHistorial"); if (ph) ph.remove();
   reiniciarChat(); begin(false);
 }
 const campo = (texto, attrs) => el("label", {}, texto, el("input", attrs));
@@ -613,7 +691,7 @@ function pintarLectura(el, text) {
   }
   const head = mk("div", "lc-head");
   head.append(mk("div", "lc-kicker", "Tu lectura"), mk("div", "lc-titulo", (lectura && lectura.nombre) || nombreTirada || "Tus cartas"),
-    mk("div", "lc-fecha", new Date().toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" })), mk("div", "lc-orn", "✧ ☾ ✧"));
+    mk("div", "lc-fecha", new Date((lectura && lectura.fecha) || Date.now()).toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" })), mk("div", "lc-orn", "✧ ☾ ✧"));
   el.appendChild(head);
   if (intro.length) el.appendChild(mk("p", "lc-intro", intro.join(" ")));
   secs.forEach((s, i) => {
@@ -900,7 +978,7 @@ async function generarPdf() {
   doc.setFont("times", "bold"); doc.setFontSize(30); doc.setTextColor(246, 223, 160);
   doc.text("Diana Arcana", W / 2, 30, { align: "center" });
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(181, 170, 196);
-  const fecha = new Date().toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" });
+  const fecha = new Date(lectura.fecha || Date.now()).toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" });
   doc.text(latino(`${lectura.nombre}  ·  ${fecha}`), W / 2, 38, { align: "center" });
   doc.setDrawColor(201, 154, 69); doc.line(W / 2 - 25, 43, W / 2 + 25, 43);
   let y = 52;
@@ -1262,7 +1340,9 @@ function begin(conVoz) {
     const opciones = document.createElement("div"); opciones.className = "opciones-usuaria";
     const no = document.createElement("button"); no.type = "button"; no.className = "linkbtn";
     no.textContent = `¿No eres ${cuenta.nombre.split(/\s+/)[0]}? Cerrar sesión`;
-    no.onclick = cerrarSesion; opciones.append(no); d.appendChild(opciones);
+    no.onclick = cerrarSesion;
+    const hist = document.createElement("button"); hist.type = "button"; hist.className = "linkbtn"; hist.textContent = "📖 Mi historial"; hist.onclick = mostrarHistorial;
+    opciones.append(hist, no); d.appendChild(opciones);
   } else if (perfil && perfil.nombre) {
     const opciones = document.createElement("div"); opciones.className = "opciones-usuaria";
     const no = document.createElement("button"); no.type = "button"; no.className = "linkbtn";
@@ -1326,7 +1406,7 @@ async function send(auto) {
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
     if (img) lectura = { nombre: "Tu tirada con tu propio mazo", cartas: null, foto: img.url, textos: [] };
-    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) { botonPdf(bubble); if (!lectura.opinion) { lectura.opinion = true; mostrarOpinion(bubble); recordarLectura(j.text); } if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
+    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); actualizarHistorial(); if (j.text.length > 160) { botonPdf(bubble); if (!lectura.opinion) { lectura.opinion = true; mostrarOpinion(bubble); recordarLectura(j.text); } if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
     if (j.suscripcion) mostrarSuscripcion(j);
@@ -1443,6 +1523,7 @@ $("nueva").onclick = () => {
 };
 
 $("start").onclick = () => { begin(true); box.focus(); };
+$("historial").onclick = mostrarHistorial;
 sendBtn.onclick = () => send();
 box.addEventListener("input", autosize);
 box.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });

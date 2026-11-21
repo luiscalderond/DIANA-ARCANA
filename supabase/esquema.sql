@@ -88,3 +88,16 @@ create index if not exists arcana_sesiones_cuenta on arcana_sesiones (cuenta_id)
 alter table arcana_cuentas enable row level security;
 alter table arcana_sesiones enable row level security;
 grant all on arcana_cuentas, arcana_sesiones to service_role;
+
+-- ===== Historial de lecturas =====
+create table if not exists arcana_lecturas (
+  id uuid primary key default gen_random_uuid(),
+  cuenta_id uuid not null references arcana_cuentas(id) on delete cascade,
+  creada timestamptz not null default now(),
+  nombre text not null,
+  cartas jsonb not null default '[]'::jsonb,
+  textos jsonb not null default '[]'::jsonb
+);
+create index if not exists arcana_lecturas_cuenta on arcana_lecturas (cuenta_id, creada desc);
+alter table arcana_lecturas enable row level security;
+grant all on arcana_lecturas to service_role;
