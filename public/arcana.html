@@ -26,7 +26,9 @@ header{background:rgba(22,18,31,.72);-webkit-backdrop-filter:blur(8px);backdrop-
 .who{flex:1;min-width:0}
 .who b{font-family:var(--display);font-size:24px;font-weight:600;display:block;line-height:1.1}
 .who small{color:var(--mist);font-size:13px;white-space:nowrap}
-@media (max-width:480px){header .linkbtn{font-size:12px}.who b{font-size:21px}header{gap:8px}}
+.hbtn{font-size:20px;width:36px;height:36px;border:1px solid var(--veil);border-radius:50%;display:inline-grid;place-items:center}
+.hbtn[aria-pressed="false"]{opacity:.45}
+@media (max-width:480px){header .linkbtn:not(.hbtn){font-size:12px}.who b{font-size:21px}header{gap:8px}}
 textarea,button{font:inherit}
 .log{flex:1;overflow-y:auto;padding-block:20px;display:flex;flex-direction:column;gap:14px;min-height:0}
 .msg{max-width:88%;padding:12px 16px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -109,7 +111,8 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
     <div class="avatar" aria-hidden="true">A</div>
     <div class="who"><b>Arcana</b><small>Asistente virtual de Diana</small></div>
     <button class="linkbtn" id="nueva" type="button">✦ Nueva consulta</button>
-    <button class="linkbtn" id="mute" type="button">🔊 Voz activada</button>
+    <button class="linkbtn hbtn" id="musica" type="button" aria-pressed="false" aria-label="Música relajante" title="Música relajante"><span aria-hidden="true">🎵</span></button>
+    <button class="linkbtn hbtn" id="mute" type="button" aria-pressed="true" aria-label="Voz de Arcana" title="Voz de Arcana"><span aria-hidden="true">🔊</span></button>
   </header>
 
   <div class="log" id="log" aria-live="polite">
@@ -261,6 +264,7 @@ function ampliarCarta(c) {
 }
 
 function begin(conVoz) {
+  if (window.Musica) Musica.iniciar();
   if (started) return;
   started = true;
   const d = addMsg("a", SALUDO); addReplay(d, SALUDO);
@@ -412,7 +416,8 @@ photo.onchange = async () => {
   catch { addMsg("a", "No pude abrir esa foto. Prueba con otra en formato JPG o PNG."); }
 };
 $("clearPhoto").onclick = clearPhoto;
-$("mute").onclick = () => { voiceOn = !voiceOn; $("mute").textContent = voiceOn ? "🔊 Voz activada" : "🔇 Voz apagada"; if (!voiceOn) callar(); };
+$("musica").onclick = () => { if (window.Musica) Musica.alternar(); };
+$("mute").onclick = () => { voiceOn = !voiceOn; $("mute").firstChild.textContent = voiceOn ? "🔊" : "🔇"; $("mute").setAttribute("aria-pressed", String(voiceOn)); if (!voiceOn) callar(); };
 if (!synth) $("mute").hidden = true;
 
 /* ---------- Micrófono (reconocimiento de voz del navegador) ---------- */
@@ -427,8 +432,9 @@ if (SR) {
     for (const r of e.results) (r.isFinal ? (fin += r[0].transcript) : (tmp += r[0].transcript));
     box.value = (base ? base + " " : "") + (fin || tmp); autosize();
   };
-  rec.onstart = () => { escuchando = true; micBtn.classList.add("on"); micBtn.setAttribute("aria-label", "Dejar de escuchar"); };
+  rec.onstart = () => { if (window.Musica) Musica.microfono(true); escuchando = true; micBtn.classList.add("on"); micBtn.setAttribute("aria-label", "Dejar de escuchar"); };
   rec.onend = () => {
+    if (window.Musica) Musica.microfono(false);
     escuchando = false; micBtn.classList.remove("on"); micBtn.setAttribute("aria-label", "Hablar");
     if (box.value.trim() && box.value.trim() !== base) send();
   };
@@ -442,5 +448,6 @@ if (SR) {
 }
 </script>
 <script src="/cielo.js" defer></script>
+<script src="/musica.js"></script>
 </body>
 </html>
