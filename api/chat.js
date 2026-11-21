@@ -13,7 +13,7 @@ import { hayBaseDeDatos, guardarConversacion, limpiarMarcasViejas } from "../lib
 let despues = (p) => p;
 try { ({ waitUntil: despues } = await import("@vercel/functions")); } catch {}
 import { cuentaDeToken, tokenDe, claveDeCuenta, guardarDatosCuenta, cuentasListas } from "../lib/cuentas.js";
-import { perfilValido, perfilDeCuenta, saludoNuevo, datosConPerfil, saludoDelDia } from "../lib/perfil.js";
+import { perfilValido, perfilDeCuenta, saludoNuevo, datosConPerfil, saludoDelDia, visitaDeHoy } from "../lib/perfil.js";
 import { publica } from "./cuenta.js";
 
 // Texto limpio para guardar: sin notas internas, sin fotos, con tope de tamaño.
@@ -54,7 +54,7 @@ function notaOtros(otros) {
   if (!otros || !otros.length) return "";
   return " Otras personas que ya consultó (datos guardados): " + otros.map((o) => { const f = buscarFecha(o.fecha); return `${o.nombre}${o.relacion ? ` (${o.relacion})` : ""}, nacida el ${o.fecha} en ${o.ciudad}, signo ${signoSolar(f)}, número de vida ${numeroDeVida(f)}`; }).join("; ") + ".";
 }
-function limpiarHistorial(mensajes, perfil, nombre) {
+function limpiarHistorial(mensajes, perfil, nombre, visitaHoy = 1) {
   if (!Array.isArray(mensajes) || mensajes.length === 0 || mensajes.length > MAX_MENSAJES) return null;
   const out = [];
   for (const m of mensajes) {
@@ -66,7 +66,7 @@ function limpiarHistorial(mensajes, perfil, nombre) {
   while (out.length && out[0].role === "assistant") out.shift();
   if (!out.length || out[out.length - 1].role !== "user") return null;
   // La conversación arranca con el saludo fijo de Arcana que la clienta ve en pantalla.
-  if (perfil) return [{ role: "user", content: `Hola. [Datos guardados en la cuenta de esta clienta: ${perfil.nombre}, nacida el ${perfil.fecha} en ${perfil.ciudad}. Ya te los dio en una visita anterior: no se los vuelvas a pedir. Ya conoce su signo y su número de vida: no se los vuelvas a describir ni a presentar; úsalos solo dentro de una lectura si aportan algo.${notaOtros(perfil.otros)}${notaLecturas(perfil.lecturas)}]` + notaNatal(perfil.fecha) }, { role: "assistant", content: saludoDelDia(perfil) }, ...out];
+  if (perfil) return [{ role: "user", content: `Hola. [Datos guardados en la cuenta de esta clienta: ${perfil.nombre}, nacida el ${perfil.fecha} en ${perfil.ciudad}. Ya te los dio en una visita anterior: no se los vuelvas a pedir. Ya conoce su signo y su número de vida: no se los vuelvas a describir ni a presentar; úsalos solo dentro de una lectura si aportan algo.${notaOtros(perfil.otros)}${notaLecturas(perfil.lecturas)}]` + notaNatal(perfil.fecha) }, { role: "assistant", content: saludoDelDia(perfil, new Date(), visitaHoy) }, ...out];
   if (nombre) return [{ role: "user", content: `Hola. [Esta clienta ya creó su cuenta: se llama ${nombre}. No le pidas el nombre; pídele solo su fecha y la ciudad donde nació, y guárdalas con guardar_datos.]` }, { role: "assistant", content: saludoNuevo(nombre) }, ...out];
   return [{ role: "user", content: "Hola" }, { role: "assistant", content: SALUDO }, ...out];
 }
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
   }
   const dispositivo = cuenta ? claveDeCuenta(cuenta.id) : body.dispositivo;
   const perfil = cuenta ? perfilDeCuenta(cuenta) : perfilValido(body.perfil);
-  const mensajes = limpiarHistorial(body.messages, perfil, cuenta && !perfil ? cuenta.nombre : null);
+  const mensajes = limpiarHistorial(body.messages, perfil, cuenta && !perfil ? cuenta.nombre : null, cuenta ? visitaDeHoy(cuenta.datos) : 1);
   if (!mensajes) return res.status(400).json({ error: "La conversación no es válida." });
   // Si la clienta acaba de dar su fecha de nacimiento, el signo y el número de vida se calculan aquí (sin errores de suma).
   const ultimo = mensajes[mensajes.length - 1];

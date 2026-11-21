@@ -4,7 +4,12 @@ import * as cu from "../lib/cuentas.js";
 import { leerCuerpo, idValido, ipDe } from "../lib/acceso.js";
 import { buscarFecha } from "../lib/numerologia.js";
 import { hayCorreo, enviarCorreo } from "../lib/correo.js";
-import { saludoCuenta } from "../lib/perfil.js";
+import { saludoCuenta, siguienteVisita } from "../lib/perfil.js";
+// Cada entrada a la app cuenta como visita del día, para no repetir el saludo.
+async function contarVisita(c) {
+  const datos = { ...(c.datos || {}), visita: siguienteVisita(c.datos) };
+  try { await cu.guardarDatosCuenta(c.id, datos); return { ...c, datos }; } catch { return c; }
+}
 
 const fallos = new Map(); // intentos fallidos por conexión y hora (aproximado: memoria de cada servidor)
 const altas = new Map();  // cuentas creadas por conexión y día: frena a quien crea cuentas en serie para tener más tiradas gratis
@@ -45,7 +50,7 @@ export default async function handler(req, res) {
         const l = await cu.obtenerLectura(c.id, id).catch(() => null);
         return l ? res.status(200).json({ lectura: l }) : res.status(404).json({ error: "No encontré esa lectura." });
       }
-      return res.status(200).json({ cuenta: publica(c) });
+      return res.status(200).json({ cuenta: publica(await contarVisita(c)) });
     }
     if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
     let b; try { b = leerCuerpo(req); } catch { return res.status(400).json({ error: "Datos no válidos." }); }
