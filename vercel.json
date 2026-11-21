@@ -7,6 +7,9 @@
     },
     "api/salud.js": {
       "includeFiles": "node_modules/astronomy-engine/**"
+    },
+    "api/cuenta.js": {
+      "includeFiles": "node_modules/astronomy-engine/**"
     }
   },
   "headers": [
