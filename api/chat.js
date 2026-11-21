@@ -135,12 +135,12 @@ export default async function handler(req, res) {
   let baraja = null;
   const tiradaVirtual = betaTool({
     name: "tirada_virtual",
-    description: "Baraja el mazo elegido (Rider-Waite o Tarot de Marsella, 78 cartas) con azar real y lo muestra en pantalla boca abajo, en abanico, para que la persona elija con el dedo las cartas de la tirada. Úsala solo cuando la persona no tiene mazo físico, en el paso de barajar. Tú no ves las cartas: la persona te enviará en su siguiente mensaje cuáles eligió.",
+    description: "Baraja el mazo Rider-Waite (78 cartas; Marsella solo si la persona lo pidió) con azar real y lo muestra en pantalla boca abajo, en abanico, para que la persona elija con el dedo las cartas de la tirada. Úsala solo cuando la persona no tiene mazo físico, en el paso de barajar. Tú no ves las cartas: la persona te enviará en su siguiente mensaje cuáles eligió.",
     inputSchema: {
       type: "object",
       properties: {
         tipo: { type: "string", enum: Object.keys(TIRADAS), description: "Tipo de tirada" },
-        mazo: { type: "string", enum: ["rider_waite", "marsella"], description: "Mazo que eligió la persona; si no eligió, rider_waite" },
+        mazo: { type: "string", enum: ["rider_waite", "marsella"], description: "Siempre rider_waite, salvo que la persona haya pedido Marsella por iniciativa propia" },
       },
       required: ["tipo"],
       additionalProperties: false,
