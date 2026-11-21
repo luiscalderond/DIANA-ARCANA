@@ -6,7 +6,7 @@ import { SISTEMA, SALUDO, saludoDe } from "../lib/prompt.js";
 import { buscarFecha, signoSolar, numeroDeVida } from "../lib/numerologia.js";
 import { notaNatal } from "../lib/numerologia.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
-import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
+import { barajar, TIRADAS, diagrama, plan, NOMBRES } from "../lib/mazo.js";
 import { usarConsulta, revisarMensaje, barajaSinCobro, idValido, datosDeposito } from "../lib/acceso.js";
 import { hayBaseDeDatos, guardarConversacion } from "../lib/db.js";
 import { cuentaDeToken, tokenDe, claveDeCuenta, guardarDatosCuenta, cuentasListas } from "../lib/cuentas.js";
@@ -314,6 +314,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
+    // Garantía: con mazo propio, en el paso de colocar las cartas el diagrama siempre aparece, aunque Arcana olvide pedirlo.
+    if (!dibujo && /paso\s*3|coloca/i.test(text)) {
+      const textos = [...mensajes.map((m) => (typeof m.content === "string" ? m.content : "")), memo];
+      let tipo = null, yaDibujado = false;
+      for (let i = textos.length - 1; i >= 0 && !tipo; i--) {
+        if (/Diagrama mostrado/.test(textos[i])) yaDibujado = true;
+        const m = [...textos[i].matchAll(/Plan mostrado \((.+), (mazo propio|tirada virtual)\)/g)].pop();
+        if (m) tipo = m[2] === "mazo propio" ? Object.keys(NOMBRES).find((k) => NOMBRES[k] === m[1]) || "" : "";
+      }
+      if (tipo && !yaDibujado) { dibujo = diagrama(tipo); memo += `Diagrama mostrado (${dibujo.nombre}): ${dibujo.posiciones.map((p) => p.n + " " + p.nombre).join(", ")}\n`; }
+    }
     // Guarda la conversación (texto, sin fotos ni notas internas) para que Diana la revise. Se avisa en pantalla.
     if (hayBaseDeDatos()) await guardarConversacion(body.consulta, dispositivo, textoParaGuardar(body.messages, text), cuenta ? cuenta.nombre : perfil ? perfil.nombre : (perfilNuevo && perfilNuevo.para === "titular" ? perfilNuevo.nombre : null)).catch((e) => console.error("Conversación", e));
     return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, miCuenta: perfilNuevo && cuenta ? publica(cuenta) : undefined, ...(bloqueo || {}) });
