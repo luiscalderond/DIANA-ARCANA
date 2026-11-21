@@ -409,13 +409,15 @@ function reiniciarChat() { callar(); historial.length = 0; consulta = nuevoId();
 let vistos = [];
 const ESTADO = "arcana-estado", ESTADO_HORAS = 12;
 function guardarEstado() {
-  try { localStorage.setItem(ESTADO, JSON.stringify({ t: Date.now(), consulta, historial: historial.slice(-38), vistos: vistos.slice(-60), usuaria: perfil ? perfil.id : null, opinion: Boolean(lectura && lectura.opinion), foto: Boolean(lectura && !lectura.cartas) })); } catch {}
+  try { localStorage.setItem(ESTADO, JSON.stringify({ t: Date.now(), consulta, historial: historial.slice(-38), vistos: vistos.slice(-60), usuaria: perfil ? perfil.id : null, cuenta: cuenta ? cuenta.id : null, opinion: Boolean(lectura && lectura.opinion), foto: Boolean(lectura && !lectura.cartas) })); } catch {}
 }
 function borrarEstado() { vistos = []; try { localStorage.removeItem(ESTADO); } catch {} }
 function restaurarEstado() {
   let e = null; try { e = JSON.parse(localStorage.getItem(ESTADO) || "null"); } catch {}
   if (!e || !Array.isArray(e.vistos) || !e.vistos.length || Date.now() - e.t > ESTADO_HORAS * 3600e3) { borrarEstado(); return false; }
-  if (e.usuaria) { const u = usuarios.find((x) => x.id === e.usuaria); if (u) perfil = u; }
+  // Con cuentas, solo se recupera la consulta de la misma cuenta con sesión abierta (si no, primero debe entrar).
+  if (cuentasActivas && (!cuenta || e.cuenta !== cuenta.id)) { if (!cuenta) return false; borrarEstado(); return false; }
+  if (e.usuaria && !cuenta) { const u = usuarios.find((x) => x.id === e.usuaria); if (u) perfil = u; }
   consulta = e.consulta || consulta; historial.push(...(e.historial || [])); vistos = e.vistos; started = true;
   const w = $("welcome"); if (w) w.remove();
   e.vistos.forEach((v, i) => {
@@ -1599,7 +1601,8 @@ if (SR) {
     try { rec.start(); } catch {}
   };
 }
-restaurarEstado();
+// Primero se revisa la sesión; luego se recupera la consulta guardada (si es de esta cuenta).
+revisandoCuenta.then(() => { begin.revisada = true; if (!started) restaurarEstado(); });
 </script>
 <script src="/cielo.js?v=4" defer></script>
 <script src="/musica.js?v=5"></script>
