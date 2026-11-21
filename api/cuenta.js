@@ -28,7 +28,8 @@ export default async function handler(req, res) {
   const ip = ipDe(req);
   try {
     if (req.method === "GET") {
-      const c = await cu.cuentaDeToken(cu.tokenDe(req));
+      let c;
+      try { c = await cu.cuentaDeToken(cu.tokenDe(req)); } catch (e) { console.error("Cuentas sin tablas", e); return res.status(503).json({ error: "Las cuentas aún no están activas." }); }
       if (!c) return res.status(401).json({ error: "Tu sesión terminó. Vuelve a entrar." });
       return res.status(200).json({ cuenta: publica(c) });
     }

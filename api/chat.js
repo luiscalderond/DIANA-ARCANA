@@ -81,8 +81,10 @@ export default async function handler(req, res) {
   // Con base de datos, cada consulta exige una cuenta con sesión abierta: así las consultas y planes siguen a la clienta en cualquier equipo.
   let cuenta = null;
   if (hayBaseDeDatos()) {
-    try { cuenta = await cuentaDeToken(tokenDe(req)); } catch (e) { console.error("Sesión", e); return res.status(503).json({ error: "No pude verificar tu cuenta. Intenta de nuevo en un momento." }); }
-    if (!cuenta) return res.status(401).json({ login: true, error: "Entra con tu cuenta para continuar." });
+    // Si las tablas de cuentas aún no existen en Supabase, sigue el modo anterior por equipo.
+    let sinTablas = false;
+    try { cuenta = await cuentaDeToken(tokenDe(req)); } catch (e) { console.error("Sesión", e); sinTablas = true; }
+    if (!cuenta && !sinTablas) return res.status(401).json({ login: true, error: "Entra con tu cuenta para continuar." });
   }
   const dispositivo = cuenta ? claveDeCuenta(cuenta.id) : body.dispositivo;
   const perfil = cuenta ? perfilDeCuenta(cuenta) : perfilValido(body.perfil);
