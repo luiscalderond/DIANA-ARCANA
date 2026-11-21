@@ -107,6 +107,21 @@ textarea,button{font:inherit}
 .card .marco::after{content:"";position:absolute;inset:4px;border-radius:7px;box-shadow:inset 0 0 0 1px rgba(29,20,51,.9),inset 0 0 14px rgba(29,20,51,.55);background:linear-gradient(120deg,transparent 40%,rgba(255,245,215,.16) 50%,transparent 60%);pointer-events:none}
 .card img{width:100%;height:100%;object-fit:cover;display:block;border-radius:7px;filter:saturate(1.18) contrast(1.06) brightness(1.02) sepia(.06)}
 .card.inv img{transform:rotate(180deg)}
+/* Micro-animaciones: inclinación 3D, destello metálico y chispas al revelar */
+.card .marco{transform:perspective(700px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s ease-out,box-shadow .3s;will-change:transform}
+.card:hover .marco,.card:focus-visible .marco{box-shadow:0 14px 30px rgba(0,0,0,.55),0 0 28px rgba(217,180,106,.45)}
+.card .brillo,.zoom .brillo{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,244,210,.0) 38%,rgba(255,244,210,.55) 47%,rgba(255,244,210,0) 56%,transparent 64%);background-size:250% 100%;background-position:120% 0;mix-blend-mode:screen;border-radius:7px}
+.card.revelada .brillo{animation:destello 1.6s ease-out .25s 1}
+.card:hover .brillo{animation:destello 1.2s ease-out 1}
+@keyframes destello{from{background-position:120% 0}to{background-position:-30% 0}}
+.chispa{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff4c8;box-shadow:0 0 6px 2px rgba(255,220,140,.8);opacity:0;pointer-events:none;animation:chispa 3.2s ease-in-out infinite}
+@keyframes chispa{0%{opacity:0;transform:translateY(0) scale(.6)}25%{opacity:.95}70%{opacity:.6}100%{opacity:0;transform:translateY(-38px) scale(.2)}}
+.card.revelada .marco{animation:revelar .7s cubic-bezier(.2,.8,.2,1.2) both}
+@keyframes revelar{from{transform:perspective(700px) rotateY(90deg) scale(.9);filter:brightness(2)}to{transform:perspective(700px) rotateY(0) scale(1);filter:none}}
+.zoom .marco-z img{display:block}
+.zoom .marco-z{position:relative;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .2s ease-out}
+.zoom .marco-z .brillo{border-radius:12px;animation:destello 2.4s ease-in-out .3s infinite}
+@media (prefers-reduced-motion:reduce){.card .brillo,.chispa,.zoom .brillo{animation:none!important;display:none}.card.revelada .marco{animation:none}.card .marco,.zoom .marco-z{transform:none!important}}
 .card .name{font-family:var(--display);font-size:15px;font-weight:600;line-height:1.1;color:#f3d99a;letter-spacing:.02em}
 .card .inv-tag{font-size:10.5px;color:var(--rose);min-height:1.2em}
 .diagrama{align-self:stretch;border:1px solid var(--veil);border-radius:16px;background:var(--cloth);padding:16px;display:flex;flex-direction:column;gap:12px;align-items:center}
@@ -397,6 +412,19 @@ function pintarTexto(el, text) {
   }
   volcar();
 }
+// Inclinación 3D que sigue el dedo o el cursor, destello metálico y chispas que flotan sobre la carta.
+function inclinar(el, zona) {
+  zona.addEventListener("pointermove", (e) => { const r = zona.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5; el.style.setProperty("--ry", (x * 16).toFixed(1) + "deg"); el.style.setProperty("--rx", (-y * 12).toFixed(1) + "deg"); });
+  zona.addEventListener("pointerleave", () => { el.style.setProperty("--ry", "0deg"); el.style.setProperty("--rx", "0deg"); });
+}
+function chispas(cont, n) {
+  for (let i = 0; i < n; i++) { const c = document.createElement("span"); c.className = "chispa"; c.style.left = (12 + Math.random() * 76) + "%"; c.style.top = (18 + Math.random() * 62) + "%"; c.style.animationDelay = (Math.random() * 3.2).toFixed(2) + "s"; cont.appendChild(c); }
+}
+function decorarCarta(k, marco) {
+  const b = document.createElement("span"); b.className = "brillo"; marco.appendChild(b);
+  chispas(marco, 4); inclinar(marco, k);
+  k.classList.add("revelada"); setTimeout(() => k.classList.remove("revelada"), 2200);
+}
 function addMsg(role, text, imgUrl) {
   const w = $("welcome"); if (w) w.remove();
   const d = document.createElement("div");
@@ -625,7 +653,7 @@ function mostrarCartas(cartas) {
     k.setAttribute("aria-label", `${c.posicion}: ${c.carta}${c.invertida ? ", invertida" : ""}. Toca para ampliar`);
     const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = c.posicion;
     const marco = document.createElement("span"); marco.className = "marco";
-    if (c.imagen) { const im = document.createElement("img"); im.src = c.imagen; im.alt = ""; im.loading = "lazy"; marco.appendChild(im); }
+    if (c.imagen) { const im = document.createElement("img"); im.src = c.imagen; im.alt = ""; im.loading = "lazy"; marco.appendChild(im); decorarCarta(k, marco); }
     const name = document.createElement("span"); name.className = "name"; name.textContent = c.carta;
     const inv = document.createElement("span"); inv.className = "inv-tag"; inv.textContent = c.invertida ? "invertida" : "";
     k.append(pos, marco, name, inv);
@@ -715,7 +743,9 @@ function ampliarCarta(c) {
   const z = document.createElement("div"); z.className = "zoom" + (c.invertida ? " inv" : ""); z.setAttribute("role", "dialog"); z.setAttribute("aria-label", c.carta);
   const im = document.createElement("img"); im.src = c.imagen; im.alt = c.carta;
   const t = document.createElement("p"); t.textContent = c.carta + (c.invertida ? " (invertida)" : "");
-  z.append(im, t); z.onclick = () => z.remove();
+  const mz = document.createElement("div"); mz.className = "marco-z"; const br = document.createElement("span"); br.className = "brillo";
+  mz.append(im, br); chispas(mz, 9); inclinar(mz, z);
+  z.append(mz, t); z.onclick = () => z.remove();
   document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { z.remove(); document.removeEventListener("keydown", esc); } });
   document.body.appendChild(z);
 }

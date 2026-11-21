@@ -11,6 +11,10 @@ archivos = sys.argv[3:] or sorted(f[:-5] for f in os.listdir(SRC) if f.endswith(
 
 TINTE = {"m": (150, 90, 210), "w": (230, 120, 50), "c": (40, 170, 190), "s": (90, 130, 230), "p": (60, 160, 100)}
 ESC = 2
+# Energía de cada carta: luz (amanecer dorado/turquesa), sombra (noche índigo profunda) o el resto (crepúsculo violeta).
+LUZ = {"m00", "m01", "m03", "m06", "m07", "m10", "m14", "m19", "m21", "c01", "p01", "s01", "w01", "c02", "c03", "c06", "c09", "c10",
+       "w02", "w03", "w04", "w06", "w08", "p03", "p06", "p09", "p10", "c11", "w11", "p11", "w14", "c14", "p13", "w13", "c13"}
+SOMBRA = {"m02", "m09", "m12", "m13", "m15", "m16", "m18", "m20", "s02", "s03", "s05", "s08", "s09", "s10", "c05", "c07", "c08", "p05", "w10", "w09"}
 
 def rgb2hsv(a):
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
@@ -60,8 +64,16 @@ def procesar(nombre):
         c0, c1, c2 = map(np.array, (c0, c1, c2))
         return np.where(t < 0.55, c0 + (c1 - c0) * (t / 0.55), c1 + (c2 - c1) * ((t - 0.55) / 0.45))
     tex = 0.75 + 0.5 * (lum - 0.75)
-    cieloA = grad(t, [0.10, 0.08, 0.30], [0.42, 0.20, 0.55], [0.98, 0.70, 0.36]) * tex
-    cieloC = grad(t, [0.08, 0.12, 0.32], [0.20, 0.32, 0.62], [0.45, 0.80, 0.82]) * (0.8 + 0.4 * (lum - 0.8))
+    energia = "luz" if nombre in LUZ else "sombra" if nombre in SOMBRA else "media"
+    if energia == "luz":
+        cieloA = grad(t, [0.30, 0.62, 0.80], [0.98, 0.74, 0.62], [1.00, 0.86, 0.46]) * tex
+        cieloC = grad(t, [0.22, 0.58, 0.78], [0.55, 0.85, 0.88], [1.00, 0.88, 0.62]) * (0.85 + 0.3 * (lum - 0.8))
+    elif energia == "sombra":
+        cieloA = grad(t, [0.04, 0.04, 0.14], [0.14, 0.10, 0.34], [0.40, 0.24, 0.52]) * tex
+        cieloC = grad(t, [0.03, 0.05, 0.16], [0.10, 0.16, 0.40], [0.26, 0.34, 0.58]) * (0.8 + 0.4 * (lum - 0.8))
+    else:
+        cieloA = grad(t, [0.10, 0.08, 0.30], [0.42, 0.20, 0.55], [0.98, 0.70, 0.36]) * tex
+        cieloC = grad(t, [0.08, 0.12, 0.32], [0.20, 0.32, 0.62], [0.45, 0.80, 0.82]) * (0.8 + 0.4 * (lum - 0.8))
     a = a * (1 - mA * 0.88) + cieloA * (mA * 0.88)
     a = a * (1 - mC * 0.80) + cieloC * (mC * 0.80)
     # Símbolos dorados (estrellas, oros, copas, coronas): dorado metálico más intenso.
@@ -111,7 +123,8 @@ def procesar(nombre):
     simb = Image.fromarray((keep * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)
     h1 = np.asarray(simb.filter(ImageFilter.GaussianBlur(16))).astype(np.float32)[..., None] / 255
     h2 = np.asarray(simb.filter(ImageFilter.GaussianBlur(5))).astype(np.float32)[..., None] / 255
-    halo = np.clip(h1 * 1.5, 0, 1) * np.array([1.0, 0.78, 0.38]) * 0.42 + np.clip(h2 * 1.1, 0, 1) * np.array([1.0, 0.92, 0.7]) * 0.22
+    h0 = np.asarray(simb.filter(ImageFilter.GaussianBlur(38))).astype(np.float32)[..., None] / 255
+    halo = np.clip(h0 * 2.2, 0, 1) * np.array([1.0, 0.70, 0.30]) * 0.30 + np.clip(h1 * 1.5, 0, 1) * np.array([1.0, 0.78, 0.38]) * 0.42 + np.clip(h2 * 1.1, 0, 1) * np.array([1.0, 0.92, 0.7]) * 0.22
     kp = np.asarray(simb).astype(np.float32)[..., None] / 255
     a = 1 - (1 - a) * (1 - halo * (1 - kp * 0.8))
     # 5c) Capas de descubrimiento en los cielos: estrellas tenues, una constelación y nebulosa (solo donde hay cielo).
@@ -120,12 +133,12 @@ def procesar(nombre):
         rng = np.random.default_rng(sum(map(ord, nombre)))
         neb = rng.random((H // 16, W // 16)).astype(np.float32)
         neb = np.asarray(Image.fromarray((neb * 255).astype(np.uint8)).resize((W, H), Image.BICUBIC).filter(ImageFilter.GaussianBlur(18))).astype(np.float32)[..., None] / 255
-        colneb = np.where(rng.random() > 0.5, np.array([0.55, 0.35, 0.85]), np.array([0.25, 0.55, 0.85]))
+        colneb = np.array([1.0, 0.85, 0.55]) if energia == "luz" else np.where(rng.random() > 0.5, np.array([0.55, 0.35, 0.85]), np.array([0.25, 0.55, 0.85]))
         a = a + cielo_m * np.clip(neb - 0.45, 0, 1) * 0.55 * colneb
         capa = Image.new("L", (W, H), 0); dc = ImageDraw.Draw(capa)
         ys_, xs_ = np.nonzero(cielo_m[..., 0] > 0.6)
         if len(ys_):
-            for _ in range(70):
+            for _ in range(40 if energia == "luz" else 110 if energia == "sombra" else 70):
                 k = rng.integers(len(ys_)); r = rng.choice([0.8, 1.1, 1.5, 2.2], p=[0.45, 0.3, 0.17, 0.08]) * ESC / 2
                 dc.ellipse([xs_[k] - r, ys_[k] - r, xs_[k] + r, ys_[k] + r], fill=int(rng.integers(110, 255)))
             k0 = rng.integers(len(ys_)); cx0, cy0 = xs_[k0], ys_[k0]; pts = [(cx0, cy0)]
@@ -133,7 +146,7 @@ def procesar(nombre):
                 ang = rng.random() * 6.28; ln = rng.integers(20, 45) * ESC / 2
                 nx, ny = pts[-1][0] + ln * math.cos(ang), pts[-1][1] + ln * math.sin(ang)
                 if 0 < ny < H and 0 < nx < W and cielo_m[int(ny), int(nx), 0] > 0.5: pts.append((nx, ny))
-            if len(pts) > 2:
+            if len(pts) > 2 and energia != "luz":
                 dc.line(pts, fill=70, width=1)
                 for q in pts: dc.ellipse([q[0] - 2.2, q[1] - 2.2, q[0] + 2.2, q[1] + 2.2], fill=230)
         st = np.asarray(capa.filter(ImageFilter.GaussianBlur(0.6))).astype(np.float32)[..., None] / 255
