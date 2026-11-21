@@ -101,6 +101,8 @@ export default async function handler(req, res) {
     const rev = await revisarMensaje({ dispositivo: body.dispositivo, ip });
     if (!rev.ok && rev.motivo === "dia") return res.status(429).json({ error: "Por hoy ya conversamos mucho. Vuelve mañana y seguimos con tu lectura." });
     if (!rev.ok) return res.status(402).json({ suscripcion: true, pendiente: rev.pendiente, agotado: rev.agotado || undefined, ...datosDeposito() });
+    // Con un plan activo, Arcana debe saber que ya puede seguir aunque antes en la conversación se haya bloqueado.
+    if (rev.plan && ultimo && ultimo.role === "user" && typeof ultimo.content === "string") ultimo.content += `\n\n[Nota del sistema: la clienta tiene activo su plan "${rev.plan}" con tiradas disponibles. Si antes en esta conversación se le dijo que no tenía consultas, eso ya cambió: continúa normalmente y usa las herramientas.]`;
   } catch (e) { console.error("Revisar mensaje", e); }
   // Cada tirada o servicio gasta una consulta (como máximo una por mensaje). Se cobra al empezarlo.
   let cobro = null, bloqueo = null;

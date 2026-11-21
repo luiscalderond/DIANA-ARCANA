@@ -1160,6 +1160,12 @@ function enlaceWhatsapp(datos, referencia, nombre) {
   const msg = `Hola Diana, envío mi comprobante de la suscripción a Arcana. Referencia: ${referencia}${nombre ? ". Nombre: " + nombre : ""}.`;
   return el("a", { class: "btn wa", href: `https://wa.me/${datos.whatsapp}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", text: "Enviar comprobante por WhatsApp" });
 }
+// Tras la activación: quita el aviso y retoma la consulta con un mensaje (el servidor revisa el plan).
+function botonContinuar(card) {
+  const b = el("button", { class: "btn", type: "button", text: "✦ Diana ya me activó: continuar" });
+  b.onclick = () => { card.remove(); send({ texto: "Ya activaron mi plan. Continuemos con mi consulta.", visible: "✦ Ya activaron mi plan, continuemos" }); };
+  return b;
+}
 function pantallaDeposito(card, datos, referencia, nombre) {
   const ref = String(referencia), dia = ref.startsWith("DD-"), sem = ref.startsWith("DS-");
   const monto = dia ? (datos.precioDia ?? 1.99) : sem ? (datos.precioSemana ?? 4.99) : 4.99;
@@ -1171,7 +1177,8 @@ function pantallaDeposito(card, datos, referencia, nombre) {
     datos.cuenta2 ? el("div", { class: "cuenta", text: datos.cuenta2 }) : null,
     el("p", { text: `Tu código de referencia: ${referencia}. Escríbelo en la transferencia o en tu mensaje.` }),
     enlaceWhatsapp(datos, referencia, nombre),
-    el("p", { text: "Cuando Diana te confirme, vuelve aquí y continúa tu consulta." }),
+    el("p", { text: "Cuando Diana te confirme, toca el botón y continúa tu consulta." }),
+    botonContinuar(card),
   ].filter(Boolean));
 }
 function formularioAcceso(card, datos) {
