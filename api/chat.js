@@ -8,7 +8,10 @@ import { notaNatal } from "../lib/numerologia.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
 import { barajar, TIRADAS, diagrama, plan, NOMBRES } from "../lib/mazo.js";
 import { usarConsulta, revisarMensaje, barajaSinCobro, idValido, datosDeposito } from "../lib/acceso.js";
-import { hayBaseDeDatos, guardarConversacion } from "../lib/db.js";
+import { hayBaseDeDatos, guardarConversacion, limpiarMarcasViejas } from "../lib/db.js";
+// Tareas que terminan después de responder (guardar la conversación) sin hacer esperar a la clienta.
+let despues = (p) => p;
+try { ({ waitUntil: despues } = await import("@vercel/functions")); } catch {}
 import { cuentaDeToken, tokenDe, claveDeCuenta, guardarDatosCuenta, cuentasListas } from "../lib/cuentas.js";
 import { perfilValido, perfilDeCuenta, saludoNuevo, datosConPerfil } from "../lib/perfil.js";
 import { publica } from "./cuenta.js";
@@ -327,7 +330,8 @@ export default async function handler(req, res) {
       if (tipo && !yaDibujado) { dibujo = diagrama(tipo); memo += `Diagrama mostrado (${dibujo.nombre}): ${dibujo.posiciones.map((p) => p.n + " " + p.nombre).join(", ")}\n`; }
     }
     // Guarda la conversación (texto, sin fotos ni notas internas) para que Diana la revise. Se avisa en pantalla.
-    if (hayBaseDeDatos()) await guardarConversacion(body.consulta, dispositivo, textoParaGuardar(body.messages, text), cuenta ? cuenta.nombre : perfil ? perfil.nombre : (perfilNuevo && perfilNuevo.para === "titular" ? perfilNuevo.nombre : null)).catch((e) => console.error("Conversación", e));
+    if (hayBaseDeDatos()) despues(guardarConversacion(body.consulta, dispositivo, textoParaGuardar(body.messages, text), cuenta ? cuenta.nombre : perfil ? perfil.nombre : (perfilNuevo && perfilNuevo.para === "titular" ? perfilNuevo.nombre : null)).catch((e) => console.error("Conversación", e)));
+    if (hayBaseDeDatos() && Math.random() < 0.02) despues(limpiarMarcasViejas().catch(() => {}));
     return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, miCuenta: perfilNuevo && cuenta ? publica(cuenta) : undefined, ...(bloqueo || {}) });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });

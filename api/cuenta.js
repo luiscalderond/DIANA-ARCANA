@@ -7,6 +7,8 @@ import { hayCorreo, enviarCorreo } from "../lib/correo.js";
 import { saludoCuenta } from "../lib/perfil.js";
 
 const fallos = new Map(); // intentos fallidos por conexión y hora (aproximado: memoria de cada servidor)
+const altas = new Map();  // cuentas creadas por conexión y día: frena a quien crea cuentas en serie para tener más tiradas gratis
+const MAX_ALTAS_POR_IP = Number(process.env.MAX_ALTAS_POR_IP || 6);
 const MAX_CUENTAS_POR_EQUIPO = Number(process.env.MAX_CUENTAS_POR_EQUIPO || 3);
 const limpio = (x, n) => String(x || "").replace(/[\[\]{}<>\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
 
@@ -59,12 +61,14 @@ export default async function handler(req, res) {
       if (!email) return res.status(400).json({ error: "Escribe tu WhatsApp, por ejemplo 0991234567." });
       if (b.accion === "ingresar") {
         const r = await cu.verificarIngreso(email, clave);
-        if (r && r.bloqueada) return res.status(423).json({ error: "Por seguridad bloqueamos esta cuenta tras varios intentos. Escríbele a Diana por WhatsApp y te da un PIN nuevo.", whatsapp: whatsappDiana() });
+        if (r && r.bloqueada) return res.status(423).json({ error: "Por seguridad pausamos esta cuenta 30 minutos tras varios intentos. Si olvidaste tu PIN, escríbele a Diana y te da uno nuevo.", whatsapp: whatsappDiana() });
         if (!r) { fallos.set(k, (fallos.get(k) || 0) + 1); if (fallos.size > 5000) fallos.clear(); return res.status(401).json({ error: "El WhatsApp o el PIN no coinciden." }); }
         await vincularPlanAnterior(String(b.legado || ""), r).catch(() => {});
         return res.status(200).json({ token: await cu.abrirSesion(r.id), cuenta: publica(r) });
       }
       // Crear cuenta: nombre, WhatsApp y PIN.
+      const kd = new Date().toISOString().slice(0, 10) + "|" + ip;
+      if (ip !== "anon" && (altas.get(kd) || 0) >= MAX_ALTAS_POR_IP) return res.status(429).json({ error: "Desde esta conexión ya se crearon varias cuentas hoy. Entra con una de ellas." });
       const nombre = limpio(b.nombre, 120);
       const fecha = limpio(b.fecha, 20), ciudad = limpio(b.ciudad, 60);
       if (nombre.length < 3 || !nombre.includes(" ")) return res.status(400).json({ error: "Escribe tu nombre y apellido." });
@@ -75,6 +79,7 @@ export default async function handler(req, res) {
       if (await cu.buscarCuentaPorEmail(email)) return res.status(409).json({ error: "Ese WhatsApp ya tiene cuenta. Toca «Ya tengo cuenta» y entra con tu PIN." });
       const legado = idValido(b.legado) ? String(b.legado) : null;
       if (legado && (await cu.contarCuentasDeEquipo(legado)) >= MAX_CUENTAS_POR_EQUIPO) return res.status(429).json({ error: "Desde este equipo ya se crearon varias cuentas. Entra con una de ellas." });
+      altas.set(kd, (altas.get(kd) || 0) + 1); if (altas.size > 5000) altas.clear();
       const c = await cu.crearCuenta({ nombre, email, telefono: tel, clave, datos: { ...(fecha && ciudad.length >= 2 ? { fecha, ciudad } : {}), otros: [], lecturas: [] }, dispositivo: legado });
       await vincularPlanAnterior(legado || "", c).catch(() => {});
       return res.status(200).json({ token: await cu.abrirSesion(c.id), cuenta: publica(c) });

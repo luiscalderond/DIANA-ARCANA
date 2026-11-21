@@ -129,7 +129,7 @@ function pintarCuentas() {
   $("ctResumen").textContent = cuentas.length ? `${cuentas.length} cuentas · ${semana} entraron esta semana.` : "Todavía no hay cuentas.";
   $("ctLista").replaceChildren(...filas.map((c) => {
     const d = document.createElement("div"); d.className = "card";
-    const b = document.createElement("b"); b.textContent = c.nombre + ((c.recuperar_intentos || 0) >= 10 ? " · 🔒 bloqueada (ponle un PIN nuevo)" : "");
+    const b = document.createElement("b"); b.textContent = c.nombre + ((c.recuperar_intentos || 0) >= 10 ? " · 🔒 pausada por PIN equivocados (ponle un PIN nuevo si te lo pide)" : "");
     const dt = c.datos || {}, lec = (dt.lecturas || []).length;
     const info = document.createElement("p");
     info.textContent = `${c.telefono || "-"}${c.email ? " · " + c.email : ""} · ${dt.fecha ? "nació el " + dt.fecha + " en " + dt.ciudad + " · " : ""}${lec} lecturas · creada el ${fecha(c.creada)}${c.ultimo_ingreso ? " · último ingreso " + fecha(c.ultimo_ingreso) : ""}`;
