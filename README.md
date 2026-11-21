@@ -52,3 +52,7 @@ Variables de entorno en Vercel:
 ## Imágenes de las cartas
 
 `public/cartas/` tiene las 78 ilustraciones originales de Pamela Colman Smith (1909), de dominio público. Son escaneos de la edición original, no de la recoloración de 1971, que sí tiene derechos de autor. Imágenes vía [Taro's Tarot](https://tarostarot.com/tarot-card-data).
+
+## Tarot de Marsella
+
+Las 78 cartas en `public/marsella/` son un diseño propio de Diana Arcana, inspirado en la tradición marsellesa de los siglos XVII y XVIII (dominio público). No se copió ningún mazo moderno. Se generan con `node scripts/generar-marsella.mjs public/marsella`.

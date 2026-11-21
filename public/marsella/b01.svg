@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="527" viewBox="0 0 300 527">
+<defs><pattern id="pt" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r=".7" fill="#e3d2ad"/></pattern>
+<clipPath id="area"><rect x="20" y="62" width="260" height="401"/></clipPath></defs>
+<rect width="300" height="527" fill="#f4e8cc"/><rect width="300" height="527" fill="url(#pt)"/>
+<g clip-path="url(#area)" stroke="#1c1424" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M54.99999999999999 440 q-11 -26.400000000000002 15.400000000000002 -28.6 q11 -24.200000000000003 37.400000000000006 -13.200000000000001 q22 -17.6 39.6 4.4 q28.6 -2.2 19.8 37.400000000000006z" fill="#8fc3e0"/><path d="M120 410 q-6 -30 14 -36 l26 -4 q14 4 8 24 l-6 20z" fill="#f1c9a0"/><path d="M118 420 h52 v20 h-52z" fill="#2a5ca8"/>
+    <path d="M136 395 L128 120 q22 -18 44 0 L164 395z" fill="#c0392b"/><path d="M134 300 h32 M132 220 h36 M130 150 h40" fill="none"/>
+    <path transform="rotate(-60 130 180)" d="M130 180 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><path transform="rotate(60 170 250)" d="M170 250 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><path transform="rotate(-70 128 270)" d="M128 270 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><path transform="rotate(60 170 160)" d="M170 160 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><path d="M85 131 q7 9 0 14 q-7 -5 0 -14z" fill="#c0392b"/><path d="M215 131 q7 9 0 14 q-7 -5 0 -14z" fill="#2a5ca8"/><path d="M80 221 q7 9 0 14 q-7 -5 0 -14z" fill="#e8b730"/><path d="M220 221 q7 9 0 14 q-7 -5 0 -14z" fill="#c0392b"/></g>
+<rect x="20" y="18" width="260" height="491" rx="3" fill="none" stroke="#1c1424" stroke-width="3"/>
+<rect x="20" y="18" width="260" height="44" fill="#f4e8cc" stroke="#1c1424" stroke-width="3"/>
+<text x="150" y="49" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="25" font-weight="700" fill="#1c1424" letter-spacing="3"></text>
+<rect x="20" y="463" width="260" height="46" fill="#f4e8cc" stroke="#1c1424" stroke-width="3"/>
+<text x="150" y="494" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="20" font-weight="700" fill="#1c1424" letter-spacing="2.5">AS DE BASTOS</text>
+</svg>

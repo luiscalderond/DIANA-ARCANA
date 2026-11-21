@@ -309,10 +309,11 @@ function imagenJpg(src, invertida) {
   return new Promise((ok, mal) => {
     const im = new Image(); im.crossOrigin = "anonymous";
     im.onload = () => {
-      const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const k = /\.svg$/.test(src) ? 2 : 1; // las cartas de Marsella son SVG: se dibujan al doble para que se vean nítidas
+      const c = document.createElement("canvas"); c.width = (im.naturalWidth || 300) * k; c.height = (im.naturalHeight || 527) * k;
       const x = c.getContext("2d");
       if (invertida) { x.translate(c.width, c.height); x.rotate(Math.PI); }
-      x.drawImage(im, 0, 0); ok({ data: c.toDataURL("image/jpeg", 0.85), w: c.width, h: c.height });
+      x.drawImage(im, 0, 0, c.width, c.height); ok({ data: c.toDataURL("image/jpeg", 0.85), w: c.width, h: c.height });
     };
     im.onerror = mal; im.src = src;
   });

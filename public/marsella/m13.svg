@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="527" viewBox="0 0 300 527">
+<defs><pattern id="pt" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r=".7" fill="#e3d2ad"/></pattern>
+<clipPath id="area"><rect x="20" y="62" width="260" height="401"/></clipPath></defs>
+<rect width="300" height="527" fill="#f4e8cc"/><rect width="300" height="527" fill="url(#pt)"/>
+<g clip-path="url(#area)" stroke="#1c1424" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M20 420 q65 -10 130 0 t130 0 V465 H20z" fill="#1c1424"/><path d="M40 428 l6 -8 M80 430 l4 -9 M210 428 l5 -9 M250 430 l4 -8" fill="none"/><path d="M20 430 V465 H280 V430z" fill="#1c1424"/><path transform="rotate(-20 60 440)" d="M60 440 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><path transform="rotate(20 90 450)" d="M90 450 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><path transform="rotate(-15 200 445)" d="M200 445 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><path transform="rotate(15 240 450)" d="M240 450 q10 -14 0 -26 q-10 12 0 26z" fill="#6f9e3f"/><circle cx="140" cy="140" r="24" fill="#f8f1df"/><circle cx="131" cy="138" r="5" fill="#1c1424"/><circle cx="149" cy="138" r="5" fill="#1c1424"/><path d="M140 165 V300 M118 190 h44 M120 210 h40 M122 230 h36 M124 250 h32 M140 300 l-30 120 M140 300 l40 110 M140 180 l-40 70 M140 180 l50 50" stroke="#f8f1df" stroke-width="7" fill="none"/><path d="M190 230 L210 90" stroke="#c0392b" stroke-width="6"/><path d="M212 90 q-80 10 -110 70 q50 -40 110 -50z" fill="#8fc3e0"/></g>
+<rect x="20" y="18" width="260" height="491" rx="3" fill="none" stroke="#1c1424" stroke-width="3"/>
+<rect x="20" y="18" width="260" height="44" fill="#f4e8cc" stroke="#1c1424" stroke-width="3"/>
+<text x="150" y="49" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="25" font-weight="700" fill="#1c1424" letter-spacing="3">XIII</text>
+<rect x="20" y="463" width="260" height="46" fill="#f4e8cc" stroke="#1c1424" stroke-width="3"/>
+<text x="150" y="494" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="20" font-weight="700" fill="#1c1424" letter-spacing="2.5"></text>
+</svg>

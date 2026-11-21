@@ -128,14 +128,17 @@ export default async function handler(req, res) {
   let baraja = null;
   const tiradaVirtual = betaTool({
     name: "tirada_virtual",
-    description: "Baraja el mazo Rider-Waite de 78 cartas con azar real y lo muestra en pantalla boca abajo, en abanico, para que la persona elija con el dedo las cartas de la tirada. Úsala solo cuando la persona no tiene mazo físico, en el paso de barajar. Tú no ves las cartas: la persona te enviará en su siguiente mensaje cuáles eligió.",
+    description: "Baraja el mazo elegido (Rider-Waite o Tarot de Marsella, 78 cartas) con azar real y lo muestra en pantalla boca abajo, en abanico, para que la persona elija con el dedo las cartas de la tirada. Úsala solo cuando la persona no tiene mazo físico, en el paso de barajar. Tú no ves las cartas: la persona te enviará en su siguiente mensaje cuáles eligió.",
     inputSchema: {
       type: "object",
-      properties: { tipo: { type: "string", enum: Object.keys(TIRADAS), description: "Tipo de tirada" } },
+      properties: {
+        tipo: { type: "string", enum: Object.keys(TIRADAS), description: "Tipo de tirada" },
+        mazo: { type: "string", enum: ["rider_waite", "marsella"], description: "Mazo que eligió la persona; si no eligió, rider_waite" },
+      },
       required: ["tipo"],
       additionalProperties: false,
     },
-    run: async ({ tipo }) => {
+    run: async ({ tipo, mazo }) => {
       try {
         // Si ya se mostró el plan (y se cobró), la baraja no cobra otra vez; se verifica en la base, no solo en el historial.
         const yaCobrada = /Plan mostrado/.test(memo) || (/Plan mostrado/.test(textoHistorial) && await barajaSinCobro({ dispositivo: body.dispositivo, ip }).catch(() => false));
@@ -144,7 +147,7 @@ export default async function handler(req, res) {
           if (c.error) return ERROR_ACCESO;
           if (!c.permitido) return noDisponible();
         }
-        baraja = barajar(tipo);
+        baraja = barajar(tipo, mazo);
         const n = baraja.posiciones.length;
         return `Mazo barajado y mostrado en abanico. La persona va a elegir ${n} ${n === 1 ? "carta" : "cartas"} tocándolas; la primera que elija va al lugar 1 (${baraja.posiciones[0]})${n > 1 ? ", la segunda al lugar 2, y así" : ""}. Invítala a elegir con su intuición y espera su mensaje con las cartas.`;
       } catch (e) {
