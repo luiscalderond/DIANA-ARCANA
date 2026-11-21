@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Suscriptoras · Diana Arcana</title>
+<title>Panel · Diana Arcana</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Karla:wght@400;700&display=swap">
 <style>
 :root{--night:#16121f;--cloth:#211a2e;--veil:#2e2540;--candle:#d9b46a;--ink:#efe8f5;--mist:#b5aac4;--rose:#c98a9a;--ok:#8fc9a0}
@@ -42,6 +42,9 @@ a{color:var(--candle)}
     </div>
     <p id="resumen" style="margin-bottom:12px"></p>
     <div id="lista" style="display:grid;gap:10px"></div>
+    <h1 style="margin-top:28px">Opiniones</h1>
+    <p id="opResumen" style="margin:6px 0 12px"></p>
+    <div id="opLista" style="display:grid;gap:10px"></div>
   </section>
 </main>
 <script>
@@ -85,8 +88,25 @@ function pintar() {
 }
 async function cargar() {
   $("err").textContent = "";
-  try { datos = (await api("GET")).suscriptoras || []; $("login").hidden = true; $("panel").hidden = false; pintar(); }
+  try { datos = (await api("GET")).suscriptoras || []; $("login").hidden = true; $("panel").hidden = false; pintar(); cargarOpiniones(); }
   catch (e) { $("err").textContent = e.message; if (/Clave/.test(e.message)) { $("login").hidden = false; $("panel").hidden = true; } }
+}
+async function cargarOpiniones() {
+  try {
+    const r = await fetch("/api/admin?ver=opiniones", { headers: { "x-admin-clave": clave } }); const j = await r.json();
+    const ops = j.opiniones || [];
+    if (j.aviso) { $("opResumen").textContent = j.aviso; return; }
+    const prom = ops.length ? (ops.reduce((s, o) => s + o.estrellas, 0) / ops.length).toFixed(1) : "-";
+    const dist = [5, 4, 3, 2, 1].map((n) => `${n}★ ${ops.filter((o) => o.estrellas === n).length}`).join(" · ");
+    $("opResumen").textContent = ops.length ? `Promedio ${prom} de 5 en ${ops.length} opiniones · ${dist}` : "Todavía no hay opiniones.";
+    $("opLista").replaceChildren(...ops.map((o) => {
+      const c = document.createElement("div"); c.className = "card";
+      const b = document.createElement("b"); b.textContent = "★".repeat(o.estrellas) + "☆".repeat(5 - o.estrellas); b.style.color = "var(--candle)";
+      const t = document.createElement("p"); t.style.color = "var(--ink)"; t.textContent = o.comentario || "(sin comentario)";
+      const m = document.createElement("p"); m.style.fontSize = "13px"; m.textContent = [fecha(o.creada), o.tirada, o.cartas].filter(Boolean).join(" · ");
+      c.append(b, t, m); return c;
+    }));
+  } catch { $("opResumen").textContent = "No se pudieron cargar las opiniones."; }
 }
 async function accion(id, accion, boton) {
   boton.disabled = true;

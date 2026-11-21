@@ -30,3 +30,17 @@ alter table public.arcana_consultas enable row level security;
 -- Los proyectos nuevos de Supabase no dan permisos automáticos: el servidor usa service_role.
 grant usage on schema public to service_role;
 grant all on public.arcana_suscriptoras, public.arcana_consultas to service_role;
+
+-- Opiniones de las clientas al final de cada lectura (estrellas + comentario).
+create table if not exists public.arcana_opiniones (
+  id uuid primary key default gen_random_uuid(),
+  dispositivo text not null,
+  estrellas int not null check (estrellas between 1 and 5),
+  comentario text,
+  tirada text,
+  cartas text,
+  creada timestamptz not null default now()
+);
+create index if not exists arcana_opiniones_creada_idx on public.arcana_opiniones (creada desc);
+alter table public.arcana_opiniones enable row level security;
+grant all on public.arcana_opiniones to service_role;

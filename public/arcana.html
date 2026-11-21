@@ -175,6 +175,17 @@ textarea,button{font:inherit}
 .diagrama ol{margin:0;padding-left:22px;align-self:stretch;color:var(--mist);font-size:14px;columns:2;column-gap:18px}
 .diagrama ol li{break-inside:avoid;margin-bottom:2px}
 .diagrama ol li::marker{color:var(--candle);font-weight:700}
+.opinion{flex:none;align-self:stretch;border:1px solid var(--candle);border-radius:16px;background:radial-gradient(120% 100% at 50% 0%,rgba(217,180,106,.16),var(--cloth));padding:18px 16px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+.opinion h3{margin:0;font-family:var(--display);font-size:23px;font-weight:600;color:#f3d99a}
+.opinion p{margin:0;color:var(--mist);font-size:14px}
+.opinion .estrellas{display:flex;gap:6px}
+.opinion .estrellas button{background:none;border:0;padding:2px 4px;font-size:36px;line-height:1;color:rgba(217,180,106,.3);cursor:pointer;transition:transform .15s,color .15s}
+.opinion .estrellas button.on{color:#f3d99a;text-shadow:0 0 12px rgba(243,217,154,.7)}
+.opinion .estrellas button:hover{transform:scale(1.15)}
+.opinion textarea{width:100%;background:rgba(10,8,15,.5);color:var(--ink);border:1px solid var(--veil);border-radius:12px;padding:10px 12px;font:15px/1.4 var(--body);resize:vertical}
+.opinion .enviar{border:0;border-radius:999px;background:var(--candle);color:var(--night);font:700 15px var(--body);padding:10px 22px;cursor:pointer}
+.opinion .enviar:disabled{opacity:.45;cursor:default}
+.opinion .op-err{color:var(--rose)}
 .plan{align-self:stretch;border:1px solid var(--candle);border-radius:16px;background:var(--cloth);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
 .plan h3{margin:0;font-family:var(--display);font-size:22px;font-weight:600}
 .plan .sub{margin:0;color:var(--mist);font-size:14px}
@@ -844,6 +855,36 @@ function mostrarBaraja(b) {
     box.appendChild(btnCortar);
   }, 1300);
 }
+// Al final de la lectura: calificación de 5 estrellas y comentario para que Diana mejore el servicio.
+function mostrarOpinion(despuesDe) {
+  const box = document.createElement("form"); box.className = "opinion"; box.setAttribute("aria-label", "Califica tu lectura");
+  const t = document.createElement("h3"); t.textContent = "¿Cómo te sentiste con tu lectura?";
+  const sub = document.createElement("p"); sub.textContent = "Tu opinión nos ayuda a mejorar. Es anónima.";
+  const est = document.createElement("div"); est.className = "estrellas"; est.setAttribute("role", "radiogroup"); est.setAttribute("aria-label", "Calificación");
+  let valor = 0;
+  const pintar = (n) => [...est.children].forEach((b, i) => b.classList.toggle("on", i < n));
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "★"; b.setAttribute("role", "radio"); b.setAttribute("aria-label", i + (i === 1 ? " estrella" : " estrellas"));
+    b.onclick = () => { valor = i; pintar(i); [...est.children].forEach((x, k) => x.setAttribute("aria-checked", String(k === i - 1))); env.disabled = false; sonar("roce"); };
+    b.onmouseenter = () => pintar(i); est.appendChild(b);
+  }
+  est.onmouseleave = () => pintar(valor);
+  const ta = document.createElement("textarea"); ta.maxLength = 1000; ta.rows = 3; ta.placeholder = "¿Qué te gustó y qué podemos mejorar? (opcional)";
+  const env = document.createElement("button"); env.type = "submit"; env.className = "enviar"; env.textContent = "Enviar mi opinión"; env.disabled = true;
+  const err = document.createElement("p"); err.className = "op-err";
+  box.onsubmit = async (e) => {
+    e.preventDefault(); if (!valor) return;
+    env.disabled = true; env.textContent = "Enviando…"; err.textContent = "";
+    try {
+      const r = await fetch("/api/opinar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dispositivo, estrellas: valor, comentario: ta.value, tirada: lectura && lectura.nombre, cartas: lectura && lectura.cartas ? lectura.cartas.map((c) => c.carta).join(", ") : "" }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "No pudimos enviar tu opinión.");
+      box.replaceChildren(); const g = document.createElement("h3"); g.textContent = "✦ ¡Gracias por tu opinión! ✦"; const gp = document.createElement("p"); gp.textContent = "Diana la leerá con cariño."; box.append(g, gp); box.classList.add("hecha");
+    } catch (x) { err.textContent = x.message || "Sin conexión. Inténtalo otra vez."; env.disabled = false; env.textContent = "Enviar mi opinión"; }
+  };
+  box.append(t, sub, est, ta, env, err);
+  despuesDe.after(box);
+}
 function mostrarPlan(pl) {
   const box = document.createElement("div"); box.className = "plan"; box.setAttribute("aria-label", "Pasos de tu consulta");
   const t = document.createElement("h3"); t.textContent = "Así será tu lectura";
@@ -1002,7 +1043,7 @@ async function send(auto) {
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
     if (img) lectura = { nombre: "Tu tirada con tu propio mazo", cartas: null, foto: img.url, textos: [] };
-    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) { botonPdf(bubble); if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
+    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) { botonPdf(bubble); if (!lectura.opinion) { lectura.opinion = true; mostrarOpinion(bubble); } if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
     if (j.suscripcion) mostrarSuscripcion(j);

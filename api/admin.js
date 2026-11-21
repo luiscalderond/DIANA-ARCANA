@@ -22,6 +22,10 @@ export default async function handler(req, res) {
   }
   if (!db.hayBaseDeDatos()) return res.status(503).json({ error: "Falta conectar la base de datos." });
   try {
+    if (req.method === "GET" && /[?&]ver=opiniones/.test(req.url || "")) {
+      try { return res.status(200).json({ opiniones: await db.listarOpiniones() }); }
+      catch (e) { return res.status(200).json({ opiniones: [], aviso: "Falta crear la tabla de opiniones en Supabase (supabase/esquema.sql)." }); }
+    }
     if (req.method === "GET") return res.status(200).json({ suscriptoras: await db.listarSuscriptoras() });
     if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
     const b = leerCuerpo(req);
