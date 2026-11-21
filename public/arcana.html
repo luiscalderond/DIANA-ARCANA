@@ -311,6 +311,36 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 .btn.wa{background:#25d366;border-color:#25d366;color:#0b2a17;text-decoration:none;justify-content:center}
 
 @media (prefers-reduced-motion:no-preference){.msg.thinking{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{opacity:.5}}}
+/* Juego «Escoge tu suerte»: mazo de arcanos mayores con lomo dorado, una vez al día tras la lectura. */
+.suerte{position:fixed;inset:0;z-index:70;background:radial-gradient(90% 70% at 50% 45%,rgba(52,32,86,.98),rgba(8,6,14,.99));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px;text-align:center;overflow:hidden}
+.suerte h2{margin:0;font-family:var(--display);font-size:clamp(30px,8vw,42px);font-weight:600;color:#f3d99a;text-shadow:0 0 18px rgba(243,217,154,.55)}
+.suerte .sub{margin:0;color:var(--mist);font-size:15px}
+.suerte .cerrar{position:absolute;top:14px;right:14px;border:0;background:rgba(255,255,255,.08);color:var(--ink);width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer}
+.suerte .mesa{position:relative;width:min(560px,100%);height:200px;margin-top:6px}
+@media (min-width:600px){.suerte .oro{width:66px;height:116px;margin-left:-33px}.suerte .mesa{height:240px}}
+.suerte .oro{position:absolute;left:50%;bottom:0;width:54px;height:94px;margin-left:-27px;border:0;padding:0;border-radius:8px;cursor:pointer;background:url(/dorso-oro.svg) center/100% 100% no-repeat;box-shadow:0 6px 14px rgba(0,0,0,.55),0 0 0 1px rgba(255,236,180,.6);transform-origin:50% 300%;transform:rotate(var(--a));transition:transform .35s ease,box-shadow .35s,opacity .4s}
+.suerte .oro::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);background-size:250% 100%;animation:oroBrillo 3.2s linear infinite;animation-delay:var(--t);pointer-events:none}
+.suerte .oro:hover,.suerte .oro:focus-visible{transform:rotate(var(--a)) translateY(-18px);box-shadow:0 0 22px 4px rgba(255,214,120,.8)}
+.suerte.elegida .oro{opacity:0;pointer-events:none}
+.suerte .revela{display:none;flex-direction:column;align-items:center;gap:12px;max-width:420px}
+.suerte.elegida .revela{display:flex}
+.suerte.elegida .mesa{display:none}
+.suerte .giro{width:170px;height:298px;perspective:900px}
+.suerte .giro .in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.3,.7,.2,1)}
+.suerte .giro.ver .in{transform:rotateY(180deg)}
+.suerte .giro .cara,.suerte .giro .lomo{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;box-shadow:0 0 34px rgba(255,214,120,.55)}
+.suerte .giro .lomo{background:url(/dorso-oro.svg) center/100% 100% no-repeat}
+.suerte .giro .cara{transform:rotateY(180deg);background:#1d1433 center/cover no-repeat}
+.suerte h3{margin:0;font-family:var(--display);font-size:28px;color:#f3d99a}
+.suerte .mensaje{margin:0;font-size:17px;line-height:1.5;color:var(--ink)}
+.suerte .acc{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:4px}
+.suerte .acc button,.suerte .acc a{border:1px solid var(--candle);border-radius:999px;background:transparent;color:#f3d99a;font:600 15px var(--body);padding:10px 18px;cursor:pointer;text-decoration:none}
+.suerte .acc .principal{background:var(--candle);color:var(--night);border-color:var(--candle)}
+.suerte .revela > *:not(.giro){opacity:0;transition:opacity .6s .9s}
+.suerte .revela.lista > *{opacity:1}
+@keyframes oroBrillo{from{background-position:150% 0}to{background-position:-100% 0}}
+@media (prefers-reduced-motion:no-preference){.suerte .mesa .oro{animation:oroEntra .7s ease-out both;animation-delay:var(--e)}@keyframes oroEntra{from{transform:rotate(0) translateY(120px);opacity:0}}.suerte .mesa{animation:flota 4s ease-in-out infinite}@keyframes flota{50%{transform:translateY(-6px)}}}
+@media (prefers-reduced-motion:reduce){.suerte .oro::after{animation:none}.suerte .giro .in{transition:none}}
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -1162,6 +1192,77 @@ function mostrarBaraja(b) {
   }, 1300);
 }
 // Al final de la lectura: calificación de 5 estrellas y comentario para que Diana mejore el servicio.
+// Juego «Escoge tu suerte»: tras la lectura (una vez al día), los 22 arcanos mayores con lomo dorado. Sin costo de IA.
+const SUERTE = [
+  ["El Loco", "Hoy la suerte premia a quien se atreve. Di que sí a algo nuevo, aunque no tengas todas las respuestas."],
+  ["El Mago", "Tienes en tus manos todo lo que necesitas. Lo que empieces hoy lleva tu sello de éxito."],
+  ["La Sacerdotisa", "Tu intuición está encendida. La respuesta que buscas llegará en silencio: escúchala."],
+  ["La Emperatriz", "La abundancia te rodea. Algo que sembraste empieza a florecer."],
+  ["El Emperador", "Hoy tu palabra tiene peso. Pon orden y verás cómo todo se acomoda a tu favor."],
+  ["El Hierofante", "Un buen consejo está por llegar. Escucha a quien ya recorrió ese camino."],
+  ["Los Enamorados", "El amor y las buenas alianzas te buscan. Elige con el corazón."],
+  ["El Carro", "Vas en la dirección correcta. Avanza con decisión, que el camino se abre."],
+  ["La Fuerza", "Tu calma es tu poder. Lo que parecía difícil se rinde ante tu paciencia."],
+  ["El Ermitaño", "Una luz interior te guía. Un momento a solas hoy te dará la claridad que buscas."],
+  ["La Rueda de la Fortuna", "¡La rueda gira a tu favor! Prepárate para una sorpresa afortunada."],
+  ["La Justicia", "Lo que es tuyo llega a ti. Hoy el universo equilibra las cuentas en tu favor."],
+  ["El Colgado", "Mirar desde otro ángulo te revela una oportunidad que nadie más ve."],
+  ["La Muerte", "Algo viejo se despide para dar paso a algo mucho mejor. Suelta y recibe."],
+  ["La Templanza", "La armonía vuelve a tu vida. Todo encuentra su medida justa."],
+  ["El Diablo", "Hoy rompes una cadena que te frenaba. Tu libertad es tu suerte."],
+  ["La Torre", "Un cambio repentino despeja tu camino. Lo que cae deja espacio a lo verdadero."],
+  ["La Estrella", "La esperanza brilla sobre ti. Pide un deseo: el cielo te está escuchando."],
+  ["La Luna", "Tus sueños traen mensajes. Presta atención a las señales de esta noche."],
+  ["El Sol", "¡Día radiante! La alegría, el éxito y la buena energía están de tu lado."],
+  ["El Juicio", "Es tu momento de renacer. Una llamada o noticia te invita a dar el gran paso."],
+  ["El Mundo", "Un ciclo se completa con éxito. Celebra: lo que deseabas está más cerca que nunca."],
+];
+const claveSuerte = () => "arcana-suerte-" + (cuenta ? cuenta.id : dispositivo);
+const hoyLocal = () => new Date().toLocaleDateString("en-CA");
+function suerteDeHoyUsada() { try { return localStorage.getItem(claveSuerte()) === hoyLocal(); } catch { return false; } }
+// Aparece cuando la clienta llega al final de su lectura (no la interrumpe mientras lee).
+function prepararSuerte(ancla) {
+  if (suerteDeHoyUsada() || !ancla || !("IntersectionObserver" in window)) return;
+  const ob = new IntersectionObserver((es) => {
+    if (!es.some((e) => e.isIntersecting)) return;
+    ob.disconnect(); setTimeout(() => { if (!suerteDeHoyUsada() && !$("suerte")) mostrarSuerte(); }, 1500);
+  }, { threshold: 0.5 });
+  ob.observe(ancla);
+}
+function mostrarSuerte() {
+  try { localStorage.setItem(claveSuerte(), hoyLocal()); } catch {}
+  const box = el("div", { id: "suerte", class: "suerte", role: "dialog", "aria-modal": "true", "aria-label": "Escoge tu suerte" });
+  const cerrar = el("button", { type: "button", class: "cerrar", "aria-label": "Cerrar", text: "✕" }); cerrar.onclick = () => box.remove();
+  const mesa = el("div", { class: "mesa" });
+  const orden = [...SUERTE.keys()].sort(() => Math.random() - 0.5), n = orden.length;
+  orden.forEach((idx, i) => {
+    const b = el("button", { type: "button", class: "oro", "aria-label": `Carta dorada ${i + 1} de ${n}` });
+    b.style.setProperty("--a", ((i - (n - 1) / 2) * 3.2).toFixed(1) + "deg");
+    b.style.setProperty("--e", (i * 0.035).toFixed(2) + "s"); b.style.setProperty("--t", (Math.random() * 3).toFixed(2) + "s");
+    b.onclick = () => revelar(idx);
+    mesa.appendChild(b);
+  });
+  const giro = el("div", { class: "giro" }), inner = el("div", { class: "in" }), cara = el("div", { class: "cara" });
+  inner.append(el("div", { class: "lomo" }), cara); giro.append(inner);
+  const titulo = el("h3"), mensaje = el("p", { class: "mensaje" }), acc = el("div", { class: "acc" });
+  const revela = el("div", { class: "revela" }, giro, titulo, mensaje, acc);
+  box.append(cerrar, el("h2", { text: "✦ Escoge tu suerte ✦" }), el("p", { class: "sub", text: "Toca la carta dorada que te llame" }), mesa, revela);
+  document.body.appendChild(box); sonar("roce");
+  function revelar(idx) {
+    const [nombre, texto] = SUERTE[idx];
+    cara.style.backgroundImage = `url(/cartas/m${String(idx).padStart(2, "0")}.webp)`;
+    titulo.textContent = nombre; mensaje.textContent = texto;
+    box.classList.add("elegida"); box.querySelector(".sub").textContent = "Tu carta de la suerte para hoy";
+    sonar("roce"); requestAnimationFrame(() => requestAnimationFrame(() => { giro.classList.add("ver"); revela.classList.add("lista"); }));
+    setTimeout(() => hablar(`${nombre}. ${texto}`), 900);
+    const otra = el("button", { type: "button", class: "principal", text: "✦ Hacer otra tirada" });
+    otra.onclick = () => { box.remove(); send({ texto: "Quiero hacer otra tirada.", visible: "✦ Quiero hacer otra tirada" }); };
+    const url = `${location.origin}/?ref=${miCodigo}`;
+    const compartir = el("a", { href: "https://wa.me/?text=" + encodeURIComponent(`Mi carta de la suerte de hoy es ${nombre} ✨ «${texto}» Descubre la tuya con Arcana, la asistente de Diana: ${url}`), target: "_blank", rel: "noopener", text: "Compartir mi suerte" });
+    const listo = el("button", { type: "button", text: "Cerrar" }); listo.onclick = () => box.remove();
+    acc.replaceChildren(otra, compartir, listo);
+  }
+}
 function mostrarOpinion(despuesDe) {
   const box = document.createElement("form"); box.className = "opinion"; box.setAttribute("aria-label", "Califica tu lectura");
   const t = document.createElement("h3"); t.textContent = "¿Cómo te sentiste con tu lectura?";
@@ -1412,7 +1513,7 @@ async function send(auto) {
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
     if (img) lectura = { nombre: "Tu tirada con tu propio mazo", cartas: null, foto: img.url, textos: [] };
-    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); actualizarHistorial(); if (j.text.length > 160) { botonPdf(bubble); if (!lectura.opinion) { lectura.opinion = true; mostrarOpinion(bubble); recordarLectura(j.text); } if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
+    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); actualizarHistorial(); if (j.text.length > 160) { botonPdf(bubble); if (!lectura.opinion) { lectura.opinion = true; mostrarOpinion(bubble); recordarLectura(j.text); prepararSuerte(bubble.nextElementSibling && bubble.nextElementSibling.classList.contains("opinion") ? bubble.nextElementSibling : bubble); } if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
     if (j.suscripcion) mostrarSuscripcion(j);
