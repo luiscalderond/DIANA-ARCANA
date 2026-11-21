@@ -26,3 +26,7 @@ create index if not exists arcana_consultas_dispositivo_idx on public.arcana_con
 
 alter table public.arcana_suscriptoras enable row level security;
 alter table public.arcana_consultas enable row level security;
+
+-- Los proyectos nuevos de Supabase no dan permisos automáticos: el servidor usa service_role.
+grant usage on schema public to service_role;
+grant all on public.arcana_suscriptoras, public.arcana_consultas to service_role;
