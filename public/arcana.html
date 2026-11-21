@@ -39,6 +39,8 @@ textarea,button{font:inherit}
 .pdf-flota.ver{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .pdf-flota button{border:0;background:none;cursor:pointer;color:#1a1029;font:700 15px/1.2 inherit;font-family:inherit}
 .pdf-flota .ir{padding:10px 8px 10px 16px;white-space:nowrap}
+.pdf-flota .pdf-opciones{margin:0;padding-left:8px;flex-wrap:nowrap}.tools:has(.pdf-opciones){flex-wrap:wrap}
+.pdf-flota .pdf-opciones{width:auto;flex-basis:auto;gap:4px}.pdf-flota .pdf-op{color:#1a1029;background:rgba(26,16,41,.1);border-color:rgba(26,16,41,.3);padding:8px 10px;font-size:13px;white-space:nowrap}
 .pdf-flota .x{width:32px;height:32px;border-radius:50%;background:rgba(26,16,41,.12);font-size:16px}
 @media (prefers-reduced-motion:no-preference){.pdf-flota.ver{animation:brilloPdf 2.6s ease-in-out infinite}@keyframes brilloPdf{50%{box-shadow:0 12px 30px -8px rgba(0,0,0,.75),0 0 0 8px rgba(246,223,160,0),0 0 40px rgba(246,223,160,.7)}}}
 .msg .tools{display:flex;gap:8px;margin-top:8px}
@@ -203,6 +205,8 @@ textarea,button{font:inherit}
 .plan li.tocable{cursor:pointer;border-radius:12px;padding:6px;margin:-6px;transition:background .2s}
 .plan li.tocable:hover,.plan li.tocable:focus-visible{background:rgba(217,180,106,.1);outline:none}
 .plan li.tocable div::after{content:"Toca para ir aquí ›";display:block;color:var(--candle);font-size:12px;margin-top:2px}
+.pdf-opciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;flex-basis:100%;width:100%}
+.pdf-op{border:1px solid var(--candle);background:rgba(217,180,106,.1);color:#f6e7bf;border-radius:999px;padding:8px 14px;font:600 14px var(--body);text-decoration:none;cursor:pointer}
 .plan .empezar{justify-content:center;font-size:16px}
 .plan.usado .empezar,.plan.usado .empezar+.sub{display:none}
 .plan.usado li.tocable div::after{content:none}
@@ -765,7 +769,7 @@ function mostrarPdfFlota() {
     pdfFlota = document.createElement("div"); pdfFlota.className = "pdf-flota"; pdfFlota.setAttribute("role", "region"); pdfFlota.setAttribute("aria-label", "Descargar tu lectura");
     const ir = document.createElement("button"); ir.type = "button"; ir.className = "ir"; ir.textContent = "📜 Tu lectura está lista · Descargar PDF";
     const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.setAttribute("aria-label", "Cerrar"); x.textContent = "✕";
-    ir.onclick = async () => { ir.disabled = true; const t = ir.textContent; ir.textContent = "Preparando tu PDF…"; try { await generarPdf(); } catch (e) { console.error(e); } ir.textContent = t; ir.disabled = false; };
+    ir.onclick = async () => { ir.disabled = true; const t = ir.textContent; ir.textContent = "Preparando tu PDF…"; try { opcionesPdf(ir, await generarPdf()); } catch (e) { console.error(e); } ir.textContent = t; ir.disabled = false; };
     x.onclick = () => { pdfCerrado = true; pdfFlota.classList.remove("ver"); log.style.paddingBottom = ""; };
     pdfFlota.append(ir, x); document.body.appendChild(pdfFlota);
   }
@@ -779,7 +783,7 @@ function botonPdf(bubble) {
   let t = bubble.querySelector(".tools");
   if (!t) { t = document.createElement("div"); t.className = "tools"; bubble.appendChild(t); }
   const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn"; b.textContent = "📜 Guardar mi lectura en PDF";
-  b.onclick = async () => { b.disabled = true; const antes = b.textContent; b.textContent = "Preparando tu PDF…"; try { await generarPdf(); } catch (e) { console.error(e); alertaSuave(b, "No pude crear el PDF. Intenta de nuevo."); } b.textContent = antes; b.disabled = false; };
+  b.onclick = async () => { b.disabled = true; const antes = b.textContent; b.textContent = "Preparando tu PDF…"; try { opcionesPdf(b, await generarPdf()); } catch (e) { console.error(e); alertaSuave(b, "No pude crear el PDF. Intenta de nuevo."); } b.textContent = antes; b.disabled = false; };
   t.appendChild(b);
 }
 // Botón del gancho final: abre una pregunta nueva con un toque.
@@ -951,12 +955,24 @@ async function generarPdf() {
   await paginaInvitacion(doc, fondo, W, H, M);
   const archivo = "lectura-diana-arcana.pdf";
   const blob = doc.output("blob");
+  return { blob, archivo };
+}
+// Tras crear el PDF: abrirlo, descargarlo o compartirlo (cada botón es un toque nuevo, así el celular lo permite).
+function opcionesPdf(boton, { blob, archivo }) {
+  const prev = boton.parentElement.querySelector(".pdf-opciones"); if (prev) prev.remove();
+  const url = URL.createObjectURL(blob);
+  const caja = document.createElement("div"); caja.className = "pdf-opciones";
+  const abrir = document.createElement("a"); abrir.className = "pdf-op"; abrir.href = url; abrir.target = "_blank"; abrir.rel = "noopener"; abrir.textContent = "👁 Abrir";
+  const bajar = document.createElement("a"); bajar.className = "pdf-op"; bajar.href = url; bajar.download = archivo; bajar.textContent = "⬇ Descargar";
+  caja.append(abrir, bajar);
   const file = new File([blob], archivo, { type: "application/pdf" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: "Mi lectura de Diana Arcana", text: "Mira mi lectura de tarot con Arcana ✨ diana-arcana.vercel.app" }); return; }
-    catch (e) { if (e && e.name === "AbortError") return; }
+    const comp = document.createElement("button"); comp.type = "button"; comp.className = "pdf-op"; comp.textContent = "↗ Compartir";
+    comp.onclick = async () => { try { await navigator.share({ files: [file], title: "Mi lectura de Diana Arcana", text: "Mira mi lectura de tarot con Arcana ✨ diana-arcana.vercel.app" }); } catch {} };
+    caja.append(comp);
   }
-  doc.save(archivo);
+  boton.after(caja);
+  if (boton.classList.contains("ir")) boton.hidden = true; // en la barra flotante, las opciones toman su lugar
 }
 function mostrarCartas(cartas, restaurada) {
   if (!restaurada) vistos.push({ k: "cartas", d: cartas });
