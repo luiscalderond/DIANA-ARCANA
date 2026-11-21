@@ -33,6 +33,16 @@ export default async function handler(req, res) {
     if (req.method === "GET") return res.status(200).json({ suscriptoras: await db.listarSuscriptoras() });
     if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
     const b = leerCuerpo(req);
+    // Modo prueba: deja libre el teléfono de Diana por un año, sin pasar por el pago.
+    if (b.accion === "probar") {
+      const dispositivo = String(b.dispositivo || "");
+      if (!/^[A-Za-z0-9-]{8,64}$/.test(dispositivo)) return res.status(400).json({ error: "Abre primero el chat de Arcana en este teléfono y vuelve aquí." });
+      const ya = (await db.suscripcionesActivasDe(dispositivo)).find((x) => String(x.referencia).startsWith("DP-"));
+      if (ya) return res.status(200).json({ ok: true, aviso: "Este teléfono ya está en modo prueba." });
+      const nueva = await db.crearSolicitud({ nombre: "Diana (pruebas)", telefono: "-", email: "-", dispositivo, referencia: "DP-" + dispositivo.slice(0, 6).toUpperCase() });
+      await db.actualizarSuscriptora(nueva.id, { estado: "activa", activa_hasta: new Date(Date.now() + 365 * 864e5).toISOString() });
+      return res.status(200).json({ ok: true, aviso: "Listo: este teléfono quedó en modo prueba por un año, con tiradas sin límite." });
+    }
     const s = await db.obtenerSuscriptora(String(b.id || ""));
     if (!s) return res.status(404).json({ error: "No existe esa suscriptora." });
     if (b.accion === "activar") {
