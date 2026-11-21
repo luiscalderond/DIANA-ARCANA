@@ -342,8 +342,8 @@ document.getElementById('agendaForm').addEventListener('submit', function(e){
 </script>
 
 <button class="musica-flot" id="musica" type="button" aria-pressed="false" aria-label="Música relajante" title="Música relajante"><span aria-hidden="true">🎵</span></button>
-<script src="/cielo.js" defer></script>
-<script src="/musica.js"></script>
+<script src="/cielo.js?v=2" defer></script>
+<script src="/musica.js?v=2"></script>
 <script>
   // Los navegadores no dejan sonar música sin un toque: empieza con el primer toque o tecla.
   document.getElementById("musica").onclick = (e) => { e.stopPropagation(); Musica.alternar(); };

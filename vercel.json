@@ -1,7 +1,41 @@
 {
   "outputDirectory": "public",
   "functions": {
-    "api/chat.js": { "maxDuration": 60, "includeFiles": "node_modules/astronomy-engine/**" },
-    "api/salud.js": { "includeFiles": "node_modules/astronomy-engine/**" }
-  }
+    "api/chat.js": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/astronomy-engine/**"
+    },
+    "api/salud.js": {
+      "includeFiles": "node_modules/astronomy-engine/**"
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)\\.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
+    }
+  ]
 }
