@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { SISTEMA, SALUDO } from "../lib/prompt.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
-import { tirar, TIRADAS, diagrama } from "../lib/mazo.js";
+import { tirar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
 import { verificarAcceso, idValido, datosDeposito } from "../lib/acceso.js";
 
 const client = new Anthropic();
@@ -129,10 +129,34 @@ export default async function handler(req, res) {
     },
   });
 
+  let indice = null;
+  const mostrarPlan = betaTool({
+    name: "mostrar_plan",
+    description: "Muestra en pantalla el índice paso a paso de la consulta de tarot (preparar el espacio, ritual, cartas, foto, lectura). Úsala apenas la persona elige la tirada, antes del ritual.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tipo: { type: "string", enum: Object.keys(TIRADAS), description: "Tirada elegida" },
+        mazo_propio: { type: "boolean", description: "true si la persona usará su propio mazo; false si Arcana hará la tirada virtual" },
+      },
+      required: ["tipo", "mazo_propio"],
+      additionalProperties: false,
+    },
+    run: async ({ tipo, mazo_propio }) => {
+      try {
+        indice = plan(tipo, mazo_propio);
+        memo += `Plan mostrado (${indice.nombre}, ${mazo_propio ? "mazo propio" : "tirada virtual"}): ${indice.pasos.map((p, i) => i + 1 + " " + p.titulo).join(", ")}\n`;
+        return `Índice mostrado en pantalla: ${indice.pasos.map((p, i) => `Paso ${i + 1}: ${p.titulo}`).join("; ")}.`;
+      } catch (e) {
+        return "Error: " + e.message;
+      }
+    },
+  });
+
   let dibujo = null;
   const mostrarDiagrama = betaTool({
     name: "mostrar_diagrama",
-    description: "Muestra en pantalla un diagrama numerado de la tirada elegida, con el lugar y el orden de cada carta. Úsala cuando la persona tiene su propio mazo y ya eligió la tirada, antes de que coloque las cartas.",
+    description: "Muestra en pantalla un diagrama numerado de la tirada elegida, con el lugar y el orden de cada carta. Úsala solo en el paso de colocar las cartas, después del ritual y de la conexión con la baraja, cuando la persona tiene su propio mazo.",
     inputSchema: {
       type: "object",
       properties: { tipo: { type: "string", enum: Object.keys(TIRADAS), description: "Tipo de tirada" } },
@@ -154,14 +178,14 @@ export default async function handler(req, res) {
     const final = await client.beta.messages.toolRunner({
       model: "claude-opus-5-5",
       max_tokens: 16000,
-      max_iterations: 4,
+      max_iterations: 5,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       // Con foto sube el esfuerzo: reconocer las cartas con precisión importa más que la rapidez.
       output_config: { effort: img ? "medium" : "low" },
       cache_control: { type: "ephemeral" },
       system: SISTEMA,
-      tools: [cartaAstral, tiradaVirtual, mostrarDiagrama],
+      tools: [cartaAstral, tiradaVirtual, mostrarPlan, mostrarDiagrama],
       messages: mensajes,
     });
 
@@ -169,7 +193,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
-    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, cartas: cartas || undefined, diagrama: dibujo || undefined });
+    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, cartas: cartas || undefined, diagrama: dibujo || undefined, plan: indice || undefined });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
     if (error instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });

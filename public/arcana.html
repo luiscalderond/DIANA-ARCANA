@@ -51,6 +51,14 @@ textarea,button{font:inherit}
 .diagrama ol{margin:0;padding-left:22px;align-self:stretch;color:var(--mist);font-size:14px;columns:2;column-gap:18px}
 .diagrama ol li{break-inside:avoid;margin-bottom:2px}
 .diagrama ol li::marker{color:var(--candle);font-weight:700}
+.plan{align-self:stretch;border:1px solid var(--candle);border-radius:16px;background:var(--cloth);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.plan h3{margin:0;font-family:var(--display);font-size:22px;font-weight:600}
+.plan .sub{margin:0;color:var(--mist);font-size:14px}
+.plan ol{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:paso}
+.plan li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;counter-increment:paso}
+.plan li::before{content:counter(paso);width:30px;height:30px;border-radius:50%;border:1px solid var(--candle);color:var(--candle);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.plan b{display:block;font-weight:700}
+.plan span{color:var(--mist);font-size:14px}
 .zoom{position:fixed;inset:0;background:rgba(10,8,15,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;padding:16px;cursor:zoom-out}
 .zoom img{max-height:76vh;max-width:100%;border-radius:12px;border:1px solid var(--candle)}
 .zoom.inv img{transform:rotate(180deg)}
@@ -204,6 +212,15 @@ function mostrarCartas(cartas) {
   });
   log.appendChild(s); log.scrollTop = log.scrollHeight;
 }
+function mostrarPlan(pl) {
+  const box = document.createElement("div"); box.className = "plan"; box.setAttribute("aria-label", "Pasos de tu consulta");
+  const t = document.createElement("h3"); t.textContent = "Así será tu lectura";
+  const sub = document.createElement("p"); sub.className = "sub"; sub.textContent = pl.nombre + (pl.mazoPropio ? " · con tu mazo" : " · tirada virtual") + ". Vamos paso a paso: no saques las cartas todavía.";
+  const ol = document.createElement("ol");
+  for (const p of pl.pasos) { const li = document.createElement("li"); const d = document.createElement("div"); const b = document.createElement("b"); b.textContent = p.titulo; const s = document.createElement("span"); s.textContent = p.detalle; d.append(b, s); li.appendChild(d); ol.appendChild(li); }
+  box.append(t, sub, ol);
+  log.appendChild(box); log.scrollTop = log.scrollHeight;
+}
 function mostrarDiagrama(d) {
   const box = document.createElement("div"); box.className = "diagrama"; box.setAttribute("aria-label", "Diagrama de la tirada " + d.nombre);
   const t = document.createElement("h3"); t.textContent = d.nombre;
@@ -279,6 +296,7 @@ async function send() {
     if (r.status === 402 && j.suscripcion) { bubble.remove(); msgU.remove(); historial.pop(); box.value = text; autosize(); if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
     if (!r.ok) { bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
     if (j.cartas) { bubble.remove(); mostrarCartas(j.cartas); log.appendChild(bubble); }
+    if (j.plan) { bubble.remove(); mostrarPlan(j.plan); log.appendChild(bubble); }
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
     bubble.textContent = j.text;
     // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
