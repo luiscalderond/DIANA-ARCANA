@@ -45,3 +45,7 @@ Variables de entorno en Vercel:
 
 - El límite diario por persona es aproximado (se reinicia cuando Vercel reinicia el servidor).
 - La voz y el micrófono dependen del navegador: funcionan mejor en Chrome (Android y computador) y en Safari reciente (iPhone).
+
+## Imágenes de las cartas
+
+`public/cartas/` tiene las 78 ilustraciones originales de Pamela Colman Smith (1909), de dominio público. Son escaneos de la edición original, no de la recoloración de 1971, que sí tiene derechos de autor. Imágenes vía [Taro's Tarot](https://tarostarot.com/tarot-card-data).

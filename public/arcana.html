@@ -33,12 +33,17 @@ textarea,button{font:inherit}
 .msg.thinking{color:var(--mist);font-style:italic}
 .linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
 .spread{align-self:stretch;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0}
-.card{width:96px;aspect-ratio:7/12;border:1px solid var(--candle);border-radius:10px;background:var(--cloth);padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center}
-.card .pos{font-size:10.5px;color:var(--mist);line-height:1.2}
-.card .name{font-family:var(--display);font-size:16px;font-weight:600;line-height:1.1}
-.card .star{color:var(--candle);font-size:20px}
-.card.inv .star{transform:rotate(180deg)}
+.card{width:104px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:zoom-in}
+.card .pos{font-size:11px;color:var(--mist);line-height:1.2;min-height:2.4em;display:flex;align-items:flex-end}
+.card .marco{width:100%;aspect-ratio:300/527;border-radius:8px;overflow:hidden;border:1px solid var(--candle);box-shadow:0 6px 18px rgba(0,0,0,.45);background:var(--cloth)}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card.inv img{transform:rotate(180deg)}
+.card .name{font-family:var(--display);font-size:15px;font-weight:600;line-height:1.1}
 .card .inv-tag{font-size:10.5px;color:var(--rose);min-height:1.2em}
+.zoom{position:fixed;inset:0;background:rgba(10,8,15,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;padding:16px;cursor:zoom-out}
+.zoom img{max-height:76vh;max-width:100%;border-radius:12px;border:1px solid var(--candle)}
+.zoom.inv img{transform:rotate(180deg)}
+.zoom p{margin:0;font-family:var(--display);font-size:24px;text-align:center}
 @media (prefers-reduced-motion:no-preference){.card{animation:flip .6s ease both}@keyframes flip{from{transform:rotateY(90deg);opacity:0}to{transform:none;opacity:1}}}
 .welcome{margin:auto 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;padding-block:24px}
 .welcome h1{font-family:var(--display);font-weight:600;font-size:clamp(34px,7vw,52px);margin:0;line-height:1.1;text-wrap:balance}
@@ -174,15 +179,28 @@ function addReplay(d, text) {
 function mostrarCartas(cartas) {
   const s = document.createElement("div"); s.className = "spread"; s.setAttribute("aria-label", "Cartas de tu tirada");
   cartas.forEach((c, i) => {
-    const k = document.createElement("div"); k.className = "card" + (c.invertida ? " inv" : "");
+    const k = document.createElement("button"); k.type = "button"; k.className = "card" + (c.invertida ? " inv" : "");
     k.style.animationDelay = (i * 0.15) + "s";
+    k.setAttribute("aria-label", `${c.posicion}: ${c.carta}${c.invertida ? ", invertida" : ""}. Toca para ampliar`);
     const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = c.posicion;
-    const star = document.createElement("span"); star.className = "star"; star.textContent = "✦";
+    const marco = document.createElement("span"); marco.className = "marco";
+    if (c.imagen) { const im = document.createElement("img"); im.src = c.imagen; im.alt = ""; im.loading = "lazy"; marco.appendChild(im); }
     const name = document.createElement("span"); name.className = "name"; name.textContent = c.carta;
     const inv = document.createElement("span"); inv.className = "inv-tag"; inv.textContent = c.invertida ? "invertida" : "";
-    k.append(pos, star, name, inv); s.appendChild(k);
+    k.append(pos, marco, name, inv);
+    k.onclick = () => ampliarCarta(c);
+    s.appendChild(k);
   });
   log.appendChild(s); log.scrollTop = log.scrollHeight;
+}
+function ampliarCarta(c) {
+  if (!c.imagen) return;
+  const z = document.createElement("div"); z.className = "zoom" + (c.invertida ? " inv" : ""); z.setAttribute("role", "dialog"); z.setAttribute("aria-label", c.carta);
+  const im = document.createElement("img"); im.src = c.imagen; im.alt = c.carta;
+  const t = document.createElement("p"); t.textContent = c.carta + (c.invertida ? " (invertida)" : "");
+  z.append(im, t); z.onclick = () => z.remove();
+  document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { z.remove(); document.removeEventListener("keydown", esc); } });
+  document.body.appendChild(z);
 }
 
 function begin(conVoz) {
