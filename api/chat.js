@@ -181,7 +181,8 @@ export default async function handler(req, res) {
     run: async ({ tipo, mazo }) => {
       try {
         // Si ya se mostró el plan (y se cobró), la baraja no cobra otra vez; se verifica en la base, no solo en el historial.
-        const yaCobrada = /Plan mostrado/.test(memo) || (/Plan mostrado/.test(textoHistorial) && await barajaSinCobro({ dispositivo: body.dispositivo, ip }).catch(() => false));
+        // barajaSinCobro solo deja pasar una baraja por consulta cobrada en las últimas 3 horas.
+        const yaCobrada = /Plan mostrado/.test(memo) || await barajaSinCobro({ dispositivo: body.dispositivo, ip }).catch(() => false);
         if (!yaCobrada) {
           const c = await cobrar();
           if (c.error) return ERROR_ACCESO;
