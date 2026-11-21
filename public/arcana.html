@@ -46,6 +46,43 @@ textarea,button{font:inherit}
 .etapa{display:block;margin:12px 0 4px;color:var(--candle);font-family:"Cormorant Garamond",Georgia,serif;font-size:1.12em;font-weight:700;letter-spacing:.2px}
 .etapa:first-child{margin-top:0}
 .gancho{display:block;margin-top:10px;width:100%;text-align:left;background:linear-gradient(135deg,rgba(217,180,106,.18),rgba(194,84,140,.18));border:1px solid var(--candle);color:var(--ink);border-radius:12px;padding:11px 14px;font-size:14.5px;cursor:pointer}
+/* Plantilla editorial de la lectura */
+.msg.lectura-card{flex:none;max-width:96%;width:100%;padding:0;white-space:normal;overflow:hidden;border:1px solid rgba(217,180,106,.45);border-radius:20px;border-top-left-radius:6px;background:linear-gradient(180deg,rgba(38,26,58,.96),rgba(24,18,36,.96));box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 0 1px rgba(217,180,106,.08) inset}
+.lc-head{position:relative;text-align:center;padding:22px 18px 16px;background:radial-gradient(120% 90% at 50% 0%,rgba(217,180,106,.28),transparent 60%),linear-gradient(135deg,#3a1d4f,#26173a 55%,#3b1530);border-bottom:1px solid rgba(217,180,106,.35)}
+.lc-kicker{font-family:var(--label);font-size:10.5px;letter-spacing:3.5px;color:var(--rose);text-transform:uppercase}
+.lc-titulo{margin:4px 0 2px;font-family:var(--display);font-size:27px;line-height:1.1;color:#f6dfa0;font-weight:600;text-shadow:0 2px 14px rgba(217,180,106,.35)}
+.lc-fecha{font-size:12px;color:var(--mist)}
+.lc-orn{margin-top:10px;color:var(--candle);letter-spacing:10px;font-size:13px;opacity:.9}
+.lc-intro{margin:16px 20px 0;font-family:var(--display);font-style:italic;font-size:18px;color:var(--ink);text-align:center;line-height:1.4}
+.lc-sec{position:relative;margin:16px 14px 0;padding:16px 16px 14px 16px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(217,180,106,.16)}
+.lc-cab{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.lc-num{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:var(--label);font-size:14px;color:#2a1a10;background:radial-gradient(circle at 35% 30%,#fff1c4,#d9b46a 55%,#9c7330);box-shadow:0 0 0 3px rgba(217,180,106,.18),0 4px 12px rgba(0,0,0,.4)}
+.lc-cab .lc-kicker{display:block;font-size:9.5px;letter-spacing:3px}
+.lc-cab h4{margin:2px 0 0;font-family:var(--display);font-size:20.5px;line-height:1.15;color:#f6dfa0;font-weight:600}
+.lc-sec p{margin:8px 0 0;line-height:1.6}
+.lc-carta{display:grid;gap:2px;padding:10px 12px;margin-top:8px;border-radius:12px;background:rgba(22,18,31,.7);border-left:3px solid var(--candle)}
+.lc-carta.con-img{grid-template-columns:52px 1fr;gap:12px;align-items:start}
+.lc-ctx{display:grid;gap:2px}
+.lc-mini{width:52px;aspect-ratio:300/527;object-fit:cover;border-radius:6px;border:2px solid var(--candle);box-shadow:0 4px 10px rgba(0,0,0,.45);margin:0!important;max-width:none!important;max-height:none!important}
+.lc-mini.inv{transform:rotate(180deg)}
+.lc-pos{font-family:var(--label);font-size:10px;letter-spacing:2.5px;color:var(--rose);text-transform:uppercase}
+.lc-nom{font-family:var(--display);font-size:18px;color:#f6dfa0;font-weight:600}
+.lc-s2{background:linear-gradient(135deg,rgba(201,138,154,.14),rgba(255,255,255,.03));border-color:rgba(201,138,154,.45)}
+.lc-s2 .lc-num{background:radial-gradient(circle at 35% 30%,#ffe0e8,#c98a9a 55%,#8c4d5e)}
+.lc-quote{position:relative;margin:6px 0 4px!important;padding:6px 6px 6px 30px;font-family:var(--display);font-style:italic;font-size:22px;line-height:1.3;color:#f6dfa0}
+.lc-quote::before{content:"“";position:absolute;left:0;top:-10px;font-size:54px;color:var(--candle);opacity:.6;font-style:normal}
+.lc-s3{background:radial-gradient(120% 120% at 100% 0%,rgba(217,180,106,.16),rgba(255,255,255,.03) 60%)}
+.lc-pasos{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;counter-reset:paso}
+.lc-pasos li{position:relative;padding:10px 12px 10px 46px;border-radius:12px;background:rgba(22,18,31,.7);counter-increment:paso;line-height:1.5}
+.lc-pasos li::before{content:counter(paso);position:absolute;left:12px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--night);background:var(--candle)}
+.lc-reloj{display:inline-block;margin-left:auto;flex:none;font-size:11px;font-weight:700;color:var(--night);background:var(--rose);border-radius:999px;padding:3px 9px;letter-spacing:.5px}
+.lc-gancho{display:block;width:calc(100% - 28px);margin:16px 14px 0;padding:16px 16px 14px;text-align:left;cursor:pointer;color:var(--ink);font:inherit;border-radius:16px;border:1px solid var(--candle);background:linear-gradient(135deg,rgba(217,180,106,.22),rgba(150,60,140,.25));box-shadow:0 0 24px rgba(217,180,106,.25);animation:brillo 2.8s ease-in-out infinite}
+.lc-gancho .t{display:block;font-family:var(--display);font-size:19px;line-height:1.35;font-style:italic}
+.lc-gancho .cta{display:inline-block;margin-top:10px;padding:8px 16px;border-radius:999px;background:var(--candle);color:var(--night);font-weight:700;font-size:14px}
+@keyframes brillo{50%{box-shadow:0 0 38px rgba(217,180,106,.45)}}
+@media (prefers-reduced-motion:reduce){.lc-gancho{animation:none}}
+.lectura-card .tools{justify-content:center;padding:14px 14px 18px;margin:0}
+.lectura-card .tools .linkbtn{border:1px solid rgba(217,180,106,.5);border-radius:999px;padding:9px 16px;font-size:14px}
 .linkbtn{background:none;border:none;color:var(--candle);cursor:pointer;padding:0;font-size:13px}
 .spread{align-self:stretch;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0}
 .spread.muchas .card{width:84px}
@@ -265,7 +302,56 @@ function pintarFaq() {
   }));
 }
 // Pinta la respuesta: las líneas que empiezan con "✦ " son títulos de etapa.
+const ETAPAS = [["I", "Tu momento"], ["II", "Tu punto ciego"], ["III", "La revelación"], ["IV", "Tu plan de acción"]];
+function pintarLectura(el, text) {
+  el.classList.add("lectura-card"); el.textContent = "";
+  const mk = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+  let intro = [], secs = [], gancho = "";
+  for (const bruto of String(text).split("\n")) {
+    const l = bruto.trim(); if (!l) continue;
+    if (/^🔮/.test(l)) { gancho = l.replace(/^🔮\s*/, ""); continue; }
+    if (/^✦\s+\S/.test(l) && l.length < 90) { secs.push({ titulo: l.replace(/^✦\s*/, ""), lineas: [] }); continue; }
+    (secs.length ? secs[secs.length - 1].lineas : intro).push(l);
+  }
+  const head = mk("div", "lc-head");
+  head.append(mk("div", "lc-kicker", "Tu lectura"), mk("div", "lc-titulo", (lectura && lectura.nombre) || nombreTirada || "Tus cartas"),
+    mk("div", "lc-fecha", new Date().toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" })), mk("div", "lc-orn", "✧ ☾ ✧"));
+  el.appendChild(head);
+  if (intro.length) el.appendChild(mk("p", "lc-intro", intro.join(" ")));
+  secs.forEach((s, i) => {
+    const sec = mk("section", "lc-sec lc-s" + (i + 1)), cab = mk("div", "lc-cab"), tx = mk("div");
+    const [rom, kick] = ETAPAS[i] || [String(i + 1), ""];
+    tx.append(mk("span", "lc-kicker", kick), mk("h4", null, s.titulo));
+    cab.append(mk("div", "lc-num", rom), tx);
+    if (/24 horas/i.test(s.titulo)) cab.appendChild(mk("span", "lc-reloj", "⏳ 24 h"));
+    sec.appendChild(cab);
+    let ol = null, primera = true;
+    for (const l of s.lineas) {
+      const c = l.match(/^(.{2,40}?)\s+[—–-]\s+(.{2,60}?):\s*(.+)$/), b = l.match(/^[•·*-]\s*(.+)$/);
+      if (c) {
+        const k = mk("div", "lc-carta"), txt = mk("div", "lc-ctx");
+        txt.append(mk("span", "lc-pos", c[1]), mk("span", "lc-nom", c[2]), mk("span", null, c[3]));
+        const nom = c[2].replace(/\s+invertida$/i, "").toLowerCase();
+        const hit = ((lectura && lectura.cartas) || []).find((x) => x.imagen && x.carta.toLowerCase().startsWith(nom.slice(0, 14)));
+        if (hit) { const im = mk("img", "lc-mini" + (hit.invertida ? " inv" : "")); im.src = hit.imagen; im.alt = ""; k.appendChild(im); k.classList.add("con-img"); }
+        k.appendChild(txt); sec.appendChild(k);
+      }
+      else if (b) { if (!ol) { ol = mk("ol", "lc-pasos"); sec.appendChild(ol); } ol.appendChild(mk("li", null, b[1])); }
+      else if (i === 2 && primera) { const m = l.match(/^(.+?[.!?…])\s+(.+)$/); if (m && m[1].length < 120) { sec.append(mk("p", "lc-quote", m[1]), mk("p", null, m[2])); } else sec.appendChild(mk("p", "lc-quote", l)); }
+      else sec.appendChild(mk("p", null, l));
+      primera = false;
+    }
+    el.appendChild(sec);
+  });
+  if (gancho) {
+    const g = mk("button", "lc-gancho"); g.type = "button";
+    g.append(mk("span", "t", gancho), mk("span", "cta", "Revelar ahora ✦"));
+    g.onclick = () => { g.disabled = true; send({ texto: "Sí, quiero revelar eso: " + gancho, visible: "🔮 Sí, quiero revelarlo" }); };
+    el.appendChild(g);
+  }
+}
 function pintarTexto(el, text) {
+  if ((String(text).match(/^\s*✦\s+\S/gm) || []).length >= 2) return pintarLectura(el, text);
   el.textContent = "";
   const lineas = String(text).split("\n");
   let buf = [];
@@ -466,7 +552,7 @@ async function generarPdf() {
   doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(239, 232, 245);
   const lineasPdf = lectura.textos.join("\n").split("\n");
   for (const bruto of lineasPdf) {
-    const esEtapa = /^\s*✦\s+\S/.test(bruto) && bruto.length < 90, parrafo = latino(bruto);
+    const esEtapa = /^\s*✦\s+\S/.test(bruto) && bruto.length < 90, parrafo = latino(bruto.replace(/[—–]/g, "-").replace(/^\s*[•]\s*/, "· "));
     if (!parrafo) continue;
     if (esEtapa) {
       if (y > H - 34) { doc.addPage(); fondo(); y = 24; }
@@ -653,7 +739,7 @@ async function send(auto) {
     historial.push({ role: "assistant", content: j.text + (j.memo ? "\n\n[Nota interna de Arcana, no visible para la persona]\n" + j.memo : "") });
     addReplay(bubble, j.text);
     if (img) lectura = { nombre: "Tu tirada con tu propio mazo", cartas: null, foto: img.url, textos: [] };
-    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) { botonPdf(bubble); if (/✦/.test(j.text)) botonGancho(bubble); } }
+    if (lectura && !j.baraja && !j.suscripcion) { lectura.textos.push(j.text); if (j.text.length > 160) { botonPdf(bubble); if (/✦/.test(j.text) && !bubble.querySelector(".lc-gancho")) botonGancho(bubble); } }
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
     if (j.suscripcion) mostrarSuscripcion(j);
