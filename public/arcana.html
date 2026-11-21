@@ -314,7 +314,7 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 </div>
 
 <script>
-const SALUDO = "Te doy la bienvenida a este espacio sagrado. Soy Arcana, la asistente virtual de Diana. Las cartas y las estrellas guardan mensajes para quien llega con el corazón abierto. Para abrir tu lectura y sintonizar con tu energía, dime tus nombres y apellidos completos, tu fecha de nacimiento y la ciudad donde naciste.";
+const SALUDO = "Qué gusto que llegues, corazón, a este rinconcito sagrado. Soy Arcana, la asistente virtual de Diana. Las cartas y las estrellas guardan mensajes para quien llega con el alma abierta. Para sintonizar con tu energía, cuéntame tus nombres y apellidos completos, tu fecha de nacimiento y la ciudad donde naciste.";
 const $ = (id) => document.getElementById(id);
 const log = $("log"), box = $("box"), sendBtn = $("send"), micBtn = $("mic"), photoBtn = $("photoBtn"), photo = $("photo");
 const nuevoId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -333,8 +333,8 @@ function guardarUsuarios() {
 }
 const primerNombre = (p) => p.nombre.split(/\s+/)[0];
 const saludoDe = (p) => p.lecturas && p.lecturas.length
-  ? `Qué alegría tenerte de nuevo, ${primerNombre(p)}. La última vez abrimos la tirada «${p.lecturas[0].t}» y las cartas dejaron algo latiendo. ¿Quieres que retomemos donde quedamos, o hoy consultas algo nuevo, para ti o para otra persona?`
-  : `Qué alegría tenerte de nuevo, ${primerNombre(p)}. Las cartas te estaban esperando. Ya tengo tus datos guardados. Cuéntame, ¿la consulta de hoy es para ti o para otra persona?`;
+  ? `Ay, ${primerNombre(p)}, qué gusto verte otra vez por aquí. La última vez abrimos la tirada «${p.lecturas[0].t}» y las cartas dejaron algo latiendo. ¿Retomamos donde quedamos, o hoy vienes con algo nuevo, para ti o para otra persona?`
+  : `Ay, ${primerNombre(p)}, qué gusto verte otra vez por aquí. Las cartas ya te estaban esperando y tus datos los tengo guardaditos. Cuéntame, ¿la consulta de hoy es para ti o para otra persona?`;
 function guardarPerfil(p) {
   const { para, ...datos } = p;
   if (para === "otra") {
