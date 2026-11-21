@@ -361,7 +361,37 @@ function perfilParaEnviar() {
   const { nombre, fecha, ciudad, otros, lecturas } = perfil;
   return { nombre, fecha, ciudad, otros, lecturas: (lecturas || []).slice(0, 5) };
 }
-function reiniciarChat() { callar(); historial.length = 0; consulta = nuevoId(); started = false; clearPhoto(); log.replaceChildren(); }
+function reiniciarChat() { callar(); historial.length = 0; consulta = nuevoId(); started = false; clearPhoto(); log.replaceChildren(); borrarEstado(); }
+// La consulta en curso se guarda en el teléfono: si el celular cierra la página (al abrir la cámara o cambiar de app), se recupera sola.
+let vistos = [];
+const ESTADO = "arcana-estado", ESTADO_HORAS = 12;
+function guardarEstado() {
+  try { localStorage.setItem(ESTADO, JSON.stringify({ t: Date.now(), consulta, historial: historial.slice(-38), vistos: vistos.slice(-60), usuaria: perfil ? perfil.id : null, opinion: Boolean(lectura && lectura.opinion), foto: Boolean(lectura && !lectura.cartas) })); } catch {}
+}
+function borrarEstado() { vistos = []; try { localStorage.removeItem(ESTADO); } catch {} }
+function restaurarEstado() {
+  let e = null; try { e = JSON.parse(localStorage.getItem(ESTADO) || "null"); } catch {}
+  if (!e || !Array.isArray(e.vistos) || !e.vistos.length || Date.now() - e.t > ESTADO_HORAS * 3600e3) { borrarEstado(); return false; }
+  if (e.usuaria) { const u = usuarios.find((x) => x.id === e.usuaria); if (u) perfil = u; }
+  consulta = e.consulta || consulta; historial.push(...(e.historial || [])); vistos = e.vistos; started = true;
+  const w = $("welcome"); if (w) w.remove();
+  e.vistos.forEach((v, i) => {
+    if (v.k === "u") addMsg("u", v.t);
+    else if (v.k === "a") {
+      const d = addMsg("a", ""); pintarTexto(d, v.t); addReplay(d, v.t);
+      if (lectura) { lectura.textos.push(v.t); if (v.t.length > 160) botonPdf(d); }
+    }
+    else if (v.k === "plan") mostrarPlan(v.d);
+    else if (v.k === "diagrama") mostrarDiagrama(v.d);
+    else if (v.k === "cartas") mostrarCartas(v.d, true);
+    else if (v.k === "foto") lectura = { nombre: "Tu tirada con tu propio mazo", cartas: null, foto: null, textos: [] };
+    else if (v.k === "baraja" && i === e.vistos.length - 1) mostrarBaraja(v.d); // la baraja solo vuelve si aún no eligió
+  });
+  if (lectura) lectura.opinion = e.opinion;
+  const n = addMsg("a", "✦ Retomamos tu consulta justo donde quedó."); n.classList.add("aviso-retomar");
+  pintarFaq();
+  return true;
+}
 function borrarUsuaria(u) {
   usuarios = usuarios.filter((x) => x.id !== u.id); if (perfil && perfil.id === u.id) perfil = null;
   guardarUsuarios();
@@ -813,7 +843,8 @@ async function generarPdf() {
   }
   doc.save(archivo);
 }
-function mostrarCartas(cartas) {
+function mostrarCartas(cartas, restaurada) {
+  if (!restaurada) vistos.push({ k: "cartas", d: cartas });
   pdfCerrado = false; if (pdfFlota) pdfFlota.classList.remove("ver");
   lectura = { nombre: nombreTirada || "Tu tirada", cartas, foto: null, textos: [] };
   const s = document.createElement("div"); s.className = "spread" + (cartas.length > 5 ? " muchas" : ""); s.setAttribute("aria-label", "Cartas de tu tirada");
@@ -824,9 +855,9 @@ function mostrarCartas(cartas) {
   };
   const conImagen = cartas.some((c) => c.imagen);
   cartas.forEach((c, i) => {
-    const k = document.createElement("button"); k.type = "button"; k.className = "card" + (c.invertida ? " inv" : "") + (c.imagen ? " oculta" : "");
+    const k = document.createElement("button"); k.type = "button"; k.className = "card" + (c.invertida ? " inv" : "") + (c.imagen && !restaurada ? " oculta" : "");
     k.style.animationDelay = (i * 0.15) + "s";
-    k.setAttribute("aria-label", c.imagen ? `${c.posicion}: carta boca abajo. Toca para revelarla` : `${c.posicion}: ${c.carta}`);
+    k.setAttribute("aria-label", c.imagen && !restaurada ? `${c.posicion}: carta boca abajo. Toca para revelarla` : `${c.posicion}: ${c.carta}`);
     const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = c.posicion;
     const marco = document.createElement("span"); marco.className = "marco";
     if (c.imagen) {
@@ -850,7 +881,7 @@ function mostrarCartas(cartas) {
   if (conImagen) s._pista(); else pista.remove();
   log.appendChild(s); log.scrollTop = log.scrollHeight;
   // Si la clienta no las voltea, se revelan solas unos segundos después de llegar la lectura (o a los 20 s).
-  if (conImagen) setTimeout(revelarPendientes, 20000);
+  if (conImagen && !restaurada) setTimeout(revelarPendientes, 20000);
 }
 function mostrarBaraja(b) {
   nombreTirada = b.nombre;
@@ -1107,6 +1138,8 @@ async function send(auto) {
   callar();
   const img = auto ? null : pendingImage;
   const msgU = addMsg("u", auto ? auto.visible : (text || "Aquí está la foto de mi tirada."), img && img.url);
+  const marcaVistos = vistos.length;
+  vistos.push({ k: "u", t: auto ? auto.visible : (text ? text : "") + (img ? (text ? " " : "") + "📷 (foto de la tirada)" : "") });
   historial.push({ role: "user", content: text || "Aquí está la foto de mi tirada." });
   const entradaUsuario = historial[historial.length - 1];
   if (auto && auto.alEnviar) auto.alEnviar();
@@ -1120,8 +1153,8 @@ async function send(auto) {
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");
-    if (r.status === 402 && j.suscripcion) { bubble.remove(); msgU.remove(); historial.pop(); if (!auto) { box.value = text; autosize(); } if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
-    if (!r.ok) { bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
+    if (r.status === 402 && j.suscripcion) { vistos.length = marcaVistos; bubble.remove(); msgU.remove(); historial.pop(); if (!auto) { box.value = text; autosize(); } if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
+    if (!r.ok) { vistos.length = marcaVistos; bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
     if (j.baraja) { bubble.remove(); log.appendChild(bubble); }
     if (j.plan) { bubble.remove(); mostrarPlan(j.plan); log.appendChild(bubble); }
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
@@ -1138,7 +1171,14 @@ async function send(auto) {
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
     if (j.suscripcion) mostrarSuscripcion(j);
+    if (j.plan) vistos.push({ k: "plan", d: j.plan });
+    if (j.diagrama) vistos.push({ k: "diagrama", d: j.diagrama });
+    if (img) vistos.push({ k: "foto" });
+    vistos.push({ k: "a", t: j.text });
+    if (j.baraja) vistos.push({ k: "baraja", d: j.baraja });
+    guardarEstado();
   } catch (e) {
+    vistos.length = marcaVistos;
     bubble.classList.remove("thinking");
     bubble.textContent = "No hay conexión. Revisa tu internet y vuelve a enviar tu mensaje.";
     historial.pop();
@@ -1237,7 +1277,7 @@ function mostrarSuscripcion(datos, cardExistente) {
 }
 
 $("nueva").onclick = () => {
-  callar(); historial.length = 0; consulta = nuevoId(); started = false; clearPhoto();
+  callar(); historial.length = 0; consulta = nuevoId(); started = false; clearPhoto(); borrarEstado();
   log.replaceChildren(); begin.elegida = false; begin(true); box.focus();
 };
 
@@ -1285,6 +1325,7 @@ if (SR) {
     try { rec.start(); } catch {}
   };
 }
+restaurarEstado();
 </script>
 <script src="/cielo.js?v=4" defer></script>
 <script src="/musica.js?v=5"></script>
