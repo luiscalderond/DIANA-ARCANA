@@ -90,7 +90,7 @@ async function cargar() {
 }
 async function accion(id, accion, boton) {
   boton.disabled = true;
-  try { await api("POST", { id, accion }); await cargar(); } catch (e) { $("err").textContent = e.message; boton.disabled = false; }
+  try { const j = await api("POST", { id, accion }); await cargar(); if (j.aviso) { $("err").style.color = "var(--ok)"; $("err").textContent = "🎁 " + j.aviso; } } catch (e) { $("err").style.color = ""; $("err").textContent = e.message; boton.disabled = false; }
 }
 $("login").onsubmit = (e) => { e.preventDefault(); clave = $("clave").value; try { sessionStorage.setItem("arcana-admin", clave); } catch {} cargar(); };
 $("filtro").onchange = pintar; $("buscar").oninput = pintar; $("recargar").onclick = cargar;

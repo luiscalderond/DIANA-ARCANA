@@ -1,7 +1,7 @@
 // /api/admin — lista y activa suscriptoras. Protegido con la variable ADMIN_CLAVE.
 import { timingSafeEqual } from "node:crypto";
 import * as db from "../lib/db.js";
-import { leerCuerpo, PLANES, planDeReferencia } from "../lib/acceso.js";
+import { leerCuerpo, PLANES, planDeReferencia, premiarReferida } from "../lib/acceso.js";
 
 function autorizado(req) {
   const esperada = process.env.ADMIN_CLAVE || "";
@@ -32,6 +32,9 @@ export default async function handler(req, res) {
       const plan = PLANES[b.plan] ? b.plan : planDeReferencia(s.referencia);
       base.setTime(base.getTime() + PLANES[plan].horas * 3600 * 1000);
       await db.actualizarSuscriptora(s.id, { estado: "activa", activa_hasta: base.toISOString() });
+      // Programa de referidas: si llegó invitada, quien la invitó gana 1 tirada (solo la primera vez).
+      const premiada = await premiarReferida(s).catch((e) => { console.error("Referida", e); return null; });
+      if (premiada) return res.status(200).json({ ok: true, aviso: `Esta clienta llegó referida por el código ${premiada}. Ya se regaló 1 tirada a quien la invitó.` });
     } else if (b.accion === "desactivar") {
       await db.actualizarSuscriptora(s.id, { estado: "inactiva" });
     } else return res.status(400).json({ error: "Acción no válida." });
