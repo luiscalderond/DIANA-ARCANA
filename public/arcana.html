@@ -226,6 +226,8 @@ textarea,button{font:inherit}
 .historial .texto{display:flex;flex-direction:column;gap:12px;line-height:1.55}
 .historial .acc{display:grid;gap:8px;margin-top:6px}.historial .acc .btn{justify-content:center}
 .historial .btn.sec{background:transparent;color:var(--candle)}
+.msg.en-vivo::after{content:"▍";color:var(--candle);animation:parpadeo 1s steps(2) infinite;margin-left:2px}
+@keyframes parpadeo{50%{opacity:0}}
 .plan .empezar{justify-content:center;font-size:16px}
 .plan.usado .empezar,.plan.usado .empezar+.sub{display:none}
 .plan.usado li.tocable div::after{content:none}
@@ -1387,13 +1389,16 @@ async function send(auto) {
   try {
     const r = await fetch("/api/chat", {
       method: "POST", headers: conSesion({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ dispositivo, consulta, perfil: perfilParaEnviar(), ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
+      body: JSON.stringify({ stream: true, dispositivo, consulta, perfil: perfilParaEnviar(), ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
     });
-    const j = await r.json().catch(() => ({}));
-    bubble.classList.remove("thinking");
+    let j, st = r.status;
+    if ((r.headers.get("Content-Type") || "").includes("ndjson")) ({ j, st } = await leerEnVivo(r, bubble));
+    else j = await r.json().catch(() => ({}));
+    const rOk = st >= 200 && st < 300;
+    bubble.classList.remove("thinking", "en-vivo");
     if (r.status === 402 && j.suscripcion) { vistos.length = marcaVistos; bubble.remove(); msgU.remove(); historial.pop(); if (!auto) { box.value = text; autosize(); } if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
     if (r.status === 401 && j.login) { vistos.length = marcaVistos; bubble.remove(); msgU.remove(); historial.pop(); if (!auto) { box.value = text; autosize(); } guardarToken(""); cuenta = null; mostrarIngreso(() => { addMsg("a", "✦ Listo, ya estás dentro. Envía tu mensaje para continuar."); box.focus(); }, "entrar"); return; }
-    if (!r.ok) { vistos.length = marcaVistos; bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
+    if (!rOk) { vistos.length = marcaVistos; bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + st + ")"; historial.pop(); return; }
     if (j.baraja) { bubble.remove(); log.appendChild(bubble); }
     if (j.plan) { bubble.remove(); mostrarPlan(j.plan); log.appendChild(bubble); }
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
@@ -1424,6 +1429,33 @@ async function send(auto) {
   } finally { busy = false; sendBtn.disabled = false; }
 }
 
+// Lee la respuesta en vivo: muestra el texto mientras llega y devuelve el resultado final.
+async function leerEnVivo(r, bubble) {
+  const lector = r.body.getReader(), dec = new TextDecoder();
+  let resto = "", texto = "", fin = null, st = 200, cuadro = 0;
+  const cerca = log.scrollHeight - log.scrollTop - log.clientHeight < 160;
+  const pintar = () => { cuadro = 0; bubble.textContent = texto.replace(/[*#_`]/g, ""); if (cerca) log.scrollTop = log.scrollHeight; };
+  for (;;) {
+    const { value, done } = await lector.read();
+    if (value) resto += dec.decode(value, { stream: true });
+    let k;
+    while ((k = resto.indexOf("\n")) >= 0) {
+      const linea = resto.slice(0, k).trim(); resto = resto.slice(k + 1);
+      if (!linea) continue;
+      let o; try { o = JSON.parse(linea); } catch { continue; }
+      if (o.n) texto = "";
+      if (o.d) {
+        if (!texto) { bubble.classList.remove("thinking"); bubble.classList.add("en-vivo"); }
+        texto += o.d;
+        if (!cuadro) cuadro = requestAnimationFrame(pintar);
+      }
+      if (o.fin) { fin = o.fin; st = o.status || 200; }
+    }
+    if (done) break;
+  }
+  if (cuadro) cancelAnimationFrame(cuadro);
+  return { j: fin || { error: "Se cortó la conexión mientras Arcana escribía. Vuelve a enviar tu mensaje." }, st: fin ? st : 502 };
+}
 function autosize() { box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 140) + "px"; }
 function clearPhoto() { pendingImage = null; photo.value = ""; $("preview").hidden = true; }
 

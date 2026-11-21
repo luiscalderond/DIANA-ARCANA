@@ -298,8 +298,16 @@ export default async function handler(req, res) {
     },
   });
 
+  // Respuesta en vivo: el texto llega a la pantalla mientras Arcana escribe (una línea JSON por fragmento).
+  const enVivo = body.stream === true;
+  let enviado = false;
+  const enviar = (o) => { if (!enviado) { enviado = true; res.writeHead(200, { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" }); } res.write(JSON.stringify(o) + "\n"); };
+  const responder = (status, obj) => {
+    if (enVivo && enviado) { res.write(JSON.stringify({ fin: obj, status }) + "\n"); return res.end(); }
+    return res.status(status).json(obj);
+  };
   try {
-    const final = await client.beta.messages.toolRunner({
+    const parametros = {
       model: "claude-sonnet-5-5",
       max_tokens: 16000,
       max_iterations: 5,
@@ -311,10 +319,20 @@ export default async function handler(req, res) {
       system: SISTEMA,
       tools: [cartaAstral, tiradaVirtual, mostrarPlan, mostrarDiagrama, iniciarServicio, guardarDatos],
       messages: mensajes,
-    });
+    };
+    let final;
+    if (enVivo) {
+      const runner = client.beta.messages.toolRunner({ ...parametros, stream: true });
+      for await (const turno of runner) {
+        enviar({ n: 1 }); // cada vuelta (antes y después de usar una herramienta) empieza un texto nuevo
+        turno.on("text", (d) => enviar({ d }));
+        await turno.finalMessage();
+      }
+      final = await runner.done();
+    } else final = await client.beta.messages.toolRunner(parametros);
 
     if (final.stop_reason === "refusal") {
-      return res.status(200).json({ text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
+      return responder(200, { text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
     // Garantía: con mazo propio, en el paso de colocar las cartas el diagrama siempre aparece, aunque Arcana olvide pedirlo.
@@ -332,15 +350,15 @@ export default async function handler(req, res) {
     // Guarda la conversación (texto, sin fotos ni notas internas) para que Diana la revise. Se avisa en pantalla.
     if (hayBaseDeDatos()) despues(guardarConversacion(body.consulta, dispositivo, textoParaGuardar(body.messages, text), cuenta ? cuenta.nombre : perfil ? perfil.nombre : (perfilNuevo && perfilNuevo.para === "titular" ? perfilNuevo.nombre : null)).catch((e) => console.error("Conversación", e)));
     if (hayBaseDeDatos() && Math.random() < 0.02) despues(limpiarMarcasViejas().catch(() => {}));
-    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, miCuenta: perfilNuevo && cuenta ? publica(cuenta) : undefined, ...(bloqueo || {}) });
+    return responder(200, { text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, miCuenta: perfilNuevo && cuenta ? publica(cuenta) : undefined, ...(bloqueo || {}) });
   } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
-    if (error instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });
+    if (error instanceof Anthropic.RateLimitError) return responder(429, { error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
+    if (error instanceof Anthropic.AuthenticationError) return responder(500, { error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });
     if (error instanceof Anthropic.APIError) {
       console.error("Anthropic", error.status, error.message);
-      return res.status(502).json({ error: "Arcana no pudo responder ahora. Intenta de nuevo en un momento." });
+      return responder(502, { error: "Arcana no pudo responder ahora. Intenta de nuevo en un momento." });
     }
     console.error("Error inesperado", error);
-    return res.status(500).json({ error: "Algo salió mal. Intenta de nuevo." });
+    return responder(500, { error: "Algo salió mal. Intenta de nuevo." });
   }
 }
