@@ -25,7 +25,7 @@ Cada vez que se sube un cambio a GitHub, Vercel publica la nueva versión sola.
 
 ## Suscripción
 
-Cada persona tiene 2 consultas gratis (una consulta es una conversación; "Nueva consulta" empieza otra). En la tercera, Arcana pide la suscripción: la persona llena nombre, teléfono y email, recibe la cuenta para depositar y un código de referencia, y envía el comprobante por WhatsApp. Diana entra a `/admin.html`, busca la referencia y pulsa **Activar 30 días**. Si la persona cambia de celular o navegador, usa "Ya soy suscriptora" con su email y teléfono.
+Cada persona tiene 3 consultas gratis (una consulta es una conversación; "Nueva consulta" empieza otra). En la cuarta, Arcana pide la suscripción: la persona llena nombre, teléfono y email, recibe la cuenta para depositar y un código de referencia, y envía el comprobante por WhatsApp. Diana entra a `/admin.html`, busca la referencia y pulsa **Activar 30 días**. Si la persona cambia de celular o navegador, usa "Ya soy suscriptora" con su email y teléfono.
 
 Variables de entorno en Vercel:
 
@@ -33,7 +33,7 @@ Variables de entorno en Vercel:
 - `CUENTA_DEPOSITO`: banco, tipo y número de cuenta, nombre y cédula del titular (puede ir en varias líneas).
 - `WHATSAPP_DIANA`: número con código de país, por ejemplo `593991234567`.
 - `ADMIN_CLAVE`: clave del panel, mínimo 8 caracteres.
-- `CONSULTAS_GRATIS` (opcional, por defecto 2) y `PRECIO_MENSUAL` (opcional, por defecto 5).
+- `CONSULTAS_GRATIS` (opcional, por defecto 3) y `PRECIO_MENSUAL` (opcional, por defecto 5).
 
 ## Costos
 
