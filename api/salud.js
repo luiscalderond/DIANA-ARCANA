@@ -9,6 +9,10 @@ export default async function handler(req, res) {
   estado.supabase_clave = !k ? "falta" : k.startsWith("sb_secret_") ? "secreta nueva" : k.startsWith("sb_publishable_") ? "PUBLICABLE (incorrecta)" : k.startsWith("eyJ") ? "JWT (service_role o anon)" : "formato desconocido";
   if (k.trim() !== k) estado.supabase_clave += " con espacios al inicio o final";
   try { const db = await import("../lib/db.js"); await db.contarConsultas("prueba-salud"); estado.supabase = "ok"; } catch (e) { estado.supabase = "error: " + String(e.message).slice(0, 300); }
+  // Cuentas de clientas e historial: cada tabla por separado, para ver cuál falta.
+  try { const db = await import("../lib/db.js"); for (const t of ["arcana_cuentas", "arcana_sesiones", "arcana_lecturas"]) { try { await db.rest(`${t}?select=*&limit=1`); estado[t] = "ok"; } catch (e) { estado[t] = "error: " + String(e.message).slice(0, 200); } } } catch {}
+  try { const cu = await import("../lib/cuentas.js"); estado.cuentas_activas = await cu.cuentasListas(); } catch (e) { estado.cuentas_activas = "error: " + String(e.message).slice(0, 200); }
+  estado.version = (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || "local";
   estado.whatsapp = Boolean(process.env.WHATSAPP_DIANA); estado.cuenta = Boolean(process.env.CUENTA_DEPOSITO); estado.admin = (process.env.ADMIN_CLAVE || "").length >= 8;
   res.status(200).json(estado);
 }
