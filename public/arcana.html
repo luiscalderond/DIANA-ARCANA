@@ -660,7 +660,7 @@ function callar() { if (synth) synth.cancel(); }
 /* Preguntas frecuentes: respuestas fijas que se muestran sin consultar a la IA (no cuestan nada). */
 const FAQ = [
   ["¿De dónde sale la información?", "Los significados de las cartas vienen de la tradición del tarot Rider-Waite, escrita por A. E. Waite en La clave pictórica del tarot (1910), y de la tradición del Tarot de Marsella, el mazo clásico francés, estudiadas por autores reconocidos. Tu carta astral se calcula con las posiciones reales de los planetas el día, la hora y en la ciudad donde naciste, y se interpreta con la astrología tradicional. Yo uno esos significados con tu pregunta para darte una lectura personal."],
-  ["Planes y precios", "Tienes 2 consultas gratis. Cada tirada, carta astral, ritual o lectura de registros akáshicos es una consulta; conversar conmigo no gasta. Después puedes elegir el pase de 24 horas por $1.99, con hasta 4 tiradas, o el plan semanal por $4.99, con hasta 10 tiradas en 7 días, que es el que más rinde."],
+  ["Planes y precios", "Tienes 3 consultas gratis. Cada tirada, carta astral, ritual o lectura de registros akáshicos es una consulta; conversar conmigo no gasta. Después puedes elegir el pase de 24 horas por $1.99, con hasta 4 tiradas, o el plan semanal por $4.99, con hasta 10 tiradas en 7 días, que es el que más rinde."],
   ["¿Cómo pago?", "Cuando terminen tus consultas gratis aparecerá un formulario. Eliges tu plan, dejas tu nombre, teléfono y email, y te mostraré la cuenta para depositar o transferir con tu código de referencia. Envías el comprobante por WhatsApp y Diana activa tu plan al confirmarlo."],
   ["Limpiezas con Diana", "Las limpiezas energéticas las hace Diana en persona. Puedes agendar la tuya en la sección Agenda de la página de inicio.", "/#agenda"],
   ["Mi privacidad", "Tu conversación con Arcana (solo el texto, no las fotos) se guarda de forma privada durante 90 días. Solo Diana puede leerla, para mejorar el servicio, y después se borra sola. No la compartimos con nadie. Si quieres que se borre antes, escríbele a Diana por WhatsApp. Tus datos de nacimiento se guardan además en tu propio teléfono, para no volver a pedírtelos."],
@@ -736,10 +736,10 @@ function pintarLectura(el, text) {
   const ver = mk("a", "lc-link", "Conoce sus servicios →"); ver.href = "/#servicios";
   dtx.appendChild(ver); di.append(mono, dtx); el.appendChild(di);
   // Regala lecturas: programa de referidas
-  const url = `${location.origin}/?ref=${miCodigo}`, msj = `Te regalo 2 consultas gratis con Arcana, la asistente de tarot de Diana ✨ Entra aquí: ${url}`;
+  const url = `${location.origin}/?ref=${miCodigo}`, msj = `Te regalo 3 consultas gratis con Arcana, la asistente de tarot de Diana ✨ Entra aquí: ${url}`;
   const rf = mk("section", "lc-ref");
   rf.append(mk("span", "lc-kicker", "Regala luz"), mk("h4", null, "Regala lecturas a tus amigos"),
-    mk("p", null, "Comparte tu enlace: tus amigos reciben 2 consultas gratis y, cuando uno active su plan, tú ganas 1 tirada de regalo."));
+    mk("p", null, "Comparte tu enlace: tus amigos reciben 3 consultas gratis y, cuando uno active su plan, tú ganas 1 tirada de regalo."));
   const cod = mk("div", "lc-codigo"); cod.append(mk("span", null, "Tu código"), mk("b", null, miCodigo)); rf.appendChild(cod);
   const bts = mk("div", "lc-ref-btns");
   const wa = mk("a", "lc-wa", "Compartir por WhatsApp"); wa.href = "https://wa.me/?text=" + encodeURIComponent(msj); wa.target = "_blank"; wa.rel = "noopener";
@@ -975,7 +975,7 @@ async function generarPdf() {
     doc.setDrawColor(201, 154, 69); doc.setLineWidth(0.6); doc.rect(8, 8, W - 16, H - 16);
     doc.setLineWidth(0.2); doc.rect(10, 10, W - 20, H - 20);
     doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(181, 170, 196);
-    doc.text("diana-arcana.vercel.app  ·  Tus primeras 2 consultas son gratis", W / 2, H - 14, { align: "center" });
+    doc.text("diana-arcana.vercel.app  ·  Tus primeras 3 consultas son gratis", W / 2, H - 14, { align: "center" });
   };
   fondo();
   doc.setFont("times", "bold"); doc.setFontSize(30); doc.setTextColor(246, 223, 160);

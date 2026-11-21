@@ -25,7 +25,7 @@ Cada vez que se sube un cambio a GitHub, Vercel publica la nueva versión sola.
 
 ## Suscripción
 
-Cada persona tiene 2 consultas gratis. Cada tirada, carta astral, ritual o lectura de registros akáshicos gasta una consulta; conversar no gasta. Planes: pase de 24 horas ($1.99, hasta 4 tiradas, referencia DD-) o semanal ($4.99, hasta 10 tiradas en 7 días, referencia DS-). Las referencias DA- antiguas (mensual) siguen funcionando con hasta 30 tiradas. El panel activa 24 horas o 7 días según la referencia. En la tercera, Arcana pide un plan: la persona llena nombre, teléfono y email, recibe la cuenta para depositar y un código de referencia, y envía el comprobante por WhatsApp. Diana entra a `/admin.html`, busca la referencia y pulsa **Activar**. Si la persona cambia de celular o navegador, usa "Ya soy suscriptora" con su email y teléfono.
+Cada persona tiene 3 consultas gratis. Cada tirada, carta astral, ritual o lectura de registros akáshicos gasta una consulta; conversar no gasta. Planes: pase de 24 horas ($1.99, hasta 4 tiradas, referencia DD-) o semanal ($4.99, hasta 10 tiradas en 7 días, referencia DS-). Las referencias DA- antiguas (mensual) siguen funcionando con hasta 30 tiradas. El panel activa 24 horas o 7 días según la referencia. En la cuarta, Arcana pide un plan: la persona llena nombre, teléfono y email, recibe la cuenta para depositar y un código de referencia, y envía el comprobante por WhatsApp. Diana entra a `/admin.html`, busca la referencia y pulsa **Activar**. Si la persona cambia de celular o navegador, usa "Ya soy suscriptora" con su email y teléfono.
 
 Variables de entorno en Vercel:
 
