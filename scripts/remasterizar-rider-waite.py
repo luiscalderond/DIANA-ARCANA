@@ -14,6 +14,13 @@ ESC = 2
 # Energía de cada carta: luz (amanecer dorado/turquesa), sombra (noche índigo profunda) o el resto (crepúsculo violeta).
 LUZ = {"m00", "m01", "m03", "m06", "m07", "m10", "m14", "m19", "m21", "c01", "p01", "s01", "w01", "c02", "c03", "c06", "c09", "c10",
        "w02", "w03", "w04", "w06", "w08", "p03", "p06", "p09", "p10", "c11", "w11", "p11", "w14", "c14", "p13", "w13", "c13"}
+# Fuentes de luz que iluminan su entorno: (x, y en fracción de la carta, color).
+LUCES = {"m09": [(0.14, 0.19, (1.0, 0.72, 0.30))], "m01": [(0.42, 0.10, (1.0, 0.92, 0.65)), (0.50, 0.30, (1.0, 0.85, 0.5))],
+         "m16": [(0.70, 0.10, (1.0, 0.80, 0.40)), (0.52, 0.30, (1.0, 0.55, 0.25))], "m18": [(0.50, 0.20, (0.80, 0.88, 1.0))],
+         "m19": [(0.50, 0.20, (1.0, 0.85, 0.45))], "m17": [(0.50, 0.17, (1.0, 0.90, 0.55))], "m14": [(0.50, 0.18, (1.0, 0.9, 0.6))],
+         "m06": [(0.50, 0.12, (1.0, 0.85, 0.5))], "m20": [(0.50, 0.12, (1.0, 0.85, 0.6))]}
+AURA_AS = {"s": (0.35, 0.62, 1.0), "w": (1.0, 0.55, 0.15), "c": (0.30, 0.85, 0.92), "p": (1.0, 0.80, 0.30)}
+ROM = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX", "XXI"]
 SOMBRA = {"m02", "m09", "m12", "m13", "m15", "m16", "m18", "m20", "s02", "s03", "s05", "s08", "s09", "s10", "c05", "c07", "c08", "p05", "w10", "w09"}
 
 def rgb2hsv(a):
@@ -80,6 +87,40 @@ def procesar(nombre):
     mS = amar[..., None].astype(np.float32) * (1 - np.clip(mA * 3, 0, 1))
     oroM = np.array([1.0, 0.78, 0.28]) * (0.55 + 0.6 * lum)
     a = a * (1 - mS * 0.55) + oroM * (mS * 0.55)
+
+    # 1b) Fondos grises o beige: se tiñen con la energía de la carta para que no se vean apagados.
+    lum0 = (0.299 * a[..., 0] + 0.587 * a[..., 1] + 0.114 * a[..., 2])[..., None]
+    hh_, ss_, vv_ = rgb2hsv(np.clip(a, 0, 1))
+    neutro = ((ss_ < 0.13) & (vv_ > 0.5)).astype(np.float32)
+    neutro = np.asarray(Image.fromarray((neutro * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2))).astype(np.float32)[..., None] / 255
+    col_e = {"luz": (1.0, 0.88, 0.66), "sombra": (0.52, 0.56, 0.90), "media": (0.76, 0.64, 0.98)}[energia]
+    grad_v = (0.78 + 0.32 * yy)  # más oscuro arriba, como un interior en penumbra
+    a = a * (1 - neutro * 0.6) + (lum0 * np.array(col_e) * grad_v) * (neutro * 0.6)
+    # 1c) Ases: aura energética radial con rayos (azul eléctrico, fuego, agua o dorado según el palo).
+    if nombre[1:] == "01" and nombre[0] != "m":
+        cx, cy = W * 0.5, H * 0.46
+        dx, dy = (np.arange(W)[None, :] - cx) / (W * 0.5), (np.arange(H)[:, None] - cy) / (W * 0.5)
+        dist = np.sqrt(dx ** 2 + dy ** 2); ang = np.arctan2(dy, dx)
+        rayos = 0.55 + 0.45 * np.cos(ang * 16) ** 8
+        aura = np.clip(1 - dist / 1.35, 0, 1) ** 1.6 * rayos
+        colA = np.array(AURA_AS[nombre[0]])
+        # El fondo gris del As se vuelve un campo de energía del elemento: oscuro en los bordes, luminoso en el centro.
+        fondo = ((s < 0.16) & (v > 0.45) & (v < 0.865)).astype(np.float32)
+        fi = Image.fromarray((fondo * 255).astype(np.uint8)).filter(ImageFilter.MedianFilter(7))
+        fi = fi.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.MinFilter(7)).filter(ImageFilter.GaussianBlur(4))
+        fondo = np.asarray(fi).astype(np.float32)[..., None] / 255
+        lumS = np.asarray(Image.fromarray((np.clip(lum0[..., 0], 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(10))).astype(np.float32)[..., None] / 255
+        campo = np.array([0.06, 0.05, 0.14]) + (colA * 0.85 - np.array([0.06, 0.05, 0.14])) * np.clip(1 - dist / 1.25, 0, 1)[..., None] ** 1.3
+        a = a * (1 - fondo * 0.85) + (campo * (0.75 + 0.4 * lumS)) * (fondo * 0.85)
+        a = a * (1 - aura[..., None] * 0.42) + (colA * (0.55 + 0.6 * lum0)) * (aura[..., None] * 0.42)  # tiñe el fondo con el color del elemento
+        a = 1 - (1 - a) * (1 - aura[..., None] ** 2 * colA * 0.7)  # y lo hace brillar
+    # 1d) Luz direccional de las fuentes de luz (linterna, rayo, varita, astros) sobre lo que las rodea.
+    for (fx, fy, col) in LUCES.get(nombre, []):
+        dx, dy = (np.arange(W)[None, :] - fx * W) / W, (np.arange(H)[:, None] - fy * H) / W
+        dist = np.sqrt(dx ** 2 + dy ** 2)
+        luzm = np.clip(1 - dist / 0.62, 0, 1) ** 2.2
+        # más luz en lo que ya es claro (telas, rostros, muros) para simular el borde iluminado
+        a = 1 - (1 - a) * (1 - luzm[..., None] * np.array(col) * (0.30 + 0.50 * lum0))
 
     # 2) Gradación de asombro: sombras hacia índigo, luces hacia dorado cálido.
     lum = (0.299 * a[..., 0] + 0.587 * a[..., 1] + 0.114 * a[..., 2])[..., None]
@@ -196,17 +237,40 @@ def procesar(nombre):
             bd.line([(0, i), (x1 - x0, i)], fill=(int(46 - 18 * k), int(24 - 8 * k), int(78 - 30 * k)))
         out.paste(banda, (x0, y0))
         d.line([(x0, y0), (x1, y0)], fill=oro, width=2); d.line([(x0, y1), (x1, y1)], fill=oro, width=2)
-        tam = 30
+        # Espaciado entre letras: más aire en títulos cortos; los largos bajan de tamaño y se alejan de las estrellas.
+        trk = 5 if len(nom) <= 10 else 3 if len(nom) <= 16 else 1.2
+        maxw = (x1 - x0) - (90 if len(nom) <= 16 else 120)
+        def ancho(f):
+            return sum(d.textlength(ch, font=f) for ch in nom) + trk * (len(nom) - 1)
+        tam = 28
         while True:
             fnt = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", tam)
-            bb = d.textbbox((0, 0), nom, font=fnt)
-            if bb[2] - bb[0] < (x1 - x0) - 70 or tam <= 16: break
+            if ancho(fnt) < maxw or tam <= 14: break
             tam -= 1
-        tw, th = bb[2] - bb[0], bb[3] - bb[1]
-        tx, ty = (x0 + x1 - tw) / 2, (y0 + y1) / 2 - th / 2 - bb[1]
-        d.text((tx + 1, ty + 2), nom, font=fnt, fill=(20, 10, 30))
-        d.text((tx, ty), nom, font=fnt, fill=(246, 223, 160))
+        bb = d.textbbox((0, 0), "ÁPQ", font=fnt); th = bb[3] - bb[1]
+        tx, ty = (x0 + x1 - ancho(fnt)) / 2, (y0 + y1) / 2 - th / 2 - bb[1] + 2
+        for ch in nom:
+            d.text((tx + 1, ty + 2), ch, font=fnt, fill=(20, 10, 30)); d.text((tx, ty), ch, font=fnt, fill=(246, 223, 160))
+            tx += d.textlength(ch, font=fnt) + trk
         estrella(x0 + 22, (y0 + y1) / 2, 8, oro); estrella(x1 - 22, (y0 + y1) / 2, 8, oro)
+    # Número romano superior en una placa de contraste (mayores y cartas numeradas del 2 al 10).
+    rom = ROM[num] if nombre[0] == "m" else (ROM[num] if 2 <= num <= 10 else "")
+    if rom:
+        from PIL import ImageFont
+        fr = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", 28)
+        tr = 3; wtxt = sum(d.textlength(ch, font=fr) for ch in rom) + tr * (len(rom) - 1)
+        pw, ph = max(80, wtxt + 48), 46; px0, py0 = W / 2 - pw / 2, 16
+        d.rounded_rectangle([px0, py0, px0 + pw, py0 + ph], radius=10, fill=(40, 22, 70), outline=oro, width=2)
+        estrella(px0 + 11, py0 + ph / 2, 5, oro); estrella(px0 + pw - 11, py0 + ph / 2, 5, oro)
+        bbr = d.textbbox((0, 0), "XVI", font=fr); tx = W / 2 - wtxt / 2; ty = py0 + ph / 2 - (bbr[3] - bbr[1]) / 2 - bbr[1]
+        for ch in rom:
+            d.text((tx + 1, ty + 2), ch, font=fr, fill=(15, 8, 25)); d.text((tx, ty), ch, font=fr, fill=(250, 228, 170)); tx += d.textlength(ch, font=fr) + tr
+    # Arcanos mayores: ornamento geométrico en las cuatro esquinas internas (peso simbólico superior).
+    if nombre[0] == "m":
+        for (cx, cy, sx, sy) in [(20, 20, 1, 1), (W - 21, 20, -1, 1), (20, H - 21, 1, -1), (W - 21, H - 21, -1, -1)]:
+            d.line([(cx, cy + sy * 46), (cx, cy), (cx + sx * 46, cy)], fill=oro2, width=3)
+            d.line([(cx + sx * 8, cy + sy * 30), (cx + sx * 8, cy + sy * 8), (cx + sx * 30, cy + sy * 8)], fill=oro, width=2)
+            d.polygon([(cx + sx * 18, cy + sy * 10), (cx + sx * 26, cy + sy * 18), (cx + sx * 18, cy + sy * 26), (cx + sx * 10, cy + sy * 18)], fill=oro2, outline=(120, 80, 30))
     out.putalpha(alpha)
     out.save(f"{DST}/{nombre}.webp", "WEBP", quality=86, method=6)
 
