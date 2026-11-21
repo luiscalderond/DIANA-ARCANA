@@ -31,6 +31,8 @@ Variables de entorno en Vercel:
 
 - `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`: de Supabase → Project Settings → API. Sin ellas, el límite está apagado y todo es gratis.
 - `CUENTA_DEPOSITO`: banco, tipo y número de cuenta, nombre y cédula del titular (puede ir en varias líneas).
+- `CUENTA_DEPOSITO_2` (opcional): segunda cuenta de otro banco, mismo formato.
+- `DEUNA_QR_URL` (opcional): dirección de la imagen del QR de DeUna; se muestra en la pantalla de pago.
 - `WHATSAPP_DIANA`: número con código de país, por ejemplo `593991234567`.
 - `ADMIN_CLAVE`: clave del panel, mínimo 8 caracteres.
 - Topes contra abusos (opcionales): `PAISES_GRATIS` (EC: consultas gratis solo desde Ecuador según Vercel; vacío = todos), `GRATIS_POR_IP` (4 gratis por conexión en 24 h), `MENSAJES_GRATIS` (45 mensajes sin plan), `MENSAJES_TRAS_ULTIMA` (20 mensajes tras la última consulta), `MENSAJES_DIA` (150 por equipo en 24 h). Los mensajes se marcan en arcana_consultas con id `m:...` (y `v:...` para barajas) y no cuentan como consultas.

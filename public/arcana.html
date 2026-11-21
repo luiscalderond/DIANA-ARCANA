@@ -125,6 +125,9 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 .paywall input[type=text],.paywall input[type=email],.paywall input[type=tel]{background:var(--night);color:var(--ink);border:1px solid var(--veil);border-radius:10px;padding:11px 12px;font:16px var(--body)}
 .paywall .check{display:flex;gap:8px;align-items:flex-start;font-size:13px}
 .paywall .check input{margin-top:3px}
+.paywall .qr-pago{display:grid;justify-items:center;gap:6px}
+.paywall .qr-pago img{width:min(220px,70%);border-radius:12px;background:#fff;padding:8px;border:2px solid var(--candle)}
+.paywall .qr-pago small{color:var(--mist);font-size:13px}
 .paywall .cuenta{white-space:pre-wrap;background:var(--night);border:1px dashed var(--candle);border-radius:10px;padding:12px;color:var(--ink);font-size:15px}
 .paywall .planes{border:0;margin:0;padding:0;display:grid;gap:8px}
 .paywall .planes legend{font-size:14px;color:var(--mist);margin-bottom:6px}
@@ -646,14 +649,16 @@ function enlaceWhatsapp(datos, referencia, nombre) {
 function pantallaDeposito(card, datos, referencia, nombre) {
   const ref = String(referencia), dia = ref.startsWith("DD-"), sem = ref.startsWith("DS-");
   const monto = dia ? (datos.precioDia ?? 1.99) : sem ? (datos.precioSemana ?? 4.99) : 4.99;
-  card.replaceChildren(
+  card.replaceChildren(...[
     el("h2", { text: "¡Gracias! Solo falta tu depósito" }),
-    el("p", { text: `Deposita o transfiere $${monto} a esta cuenta y envía el comprobante. Diana activará ${dia ? `tu pase de 24 horas (hasta ${datos.tiradasDia ?? 4} tiradas)` : sem ? `tu plan semanal (hasta ${datos.tiradasSemana ?? 10} tiradas en 7 días)` : "tu suscripción"} al confirmarlo.` }),
+    el("p", { text: `Deposita o transfiere $${monto} ${(datos.qr ? "con DeUna o " : "") + (datos.cuenta2 ? "a una de estas cuentas" : "a esta cuenta")} y envía el comprobante. Diana activará ${dia ? `tu pase de 24 horas (hasta ${datos.tiradasDia ?? 4} tiradas)` : sem ? `tu plan semanal (hasta ${datos.tiradasSemana ?? 10} tiradas en 7 días)` : "tu suscripción"} al confirmarlo.` }),
+    datos.qr ? el("div", { class: "qr-pago" }, el("img", { src: datos.qr, alt: "Código QR de DeUna para pagar" }), el("small", { text: "Escanéalo con DeUna o la app de tu banco" })) : null,
     el("div", { class: "cuenta", text: datos.cuenta }),
+    datos.cuenta2 ? el("div", { class: "cuenta", text: datos.cuenta2 }) : null,
     el("p", { text: `Tu código de referencia: ${referencia}. Escríbelo en la transferencia o en tu mensaje.` }),
     enlaceWhatsapp(datos, referencia, nombre),
     el("p", { text: "Cuando Diana te confirme, vuelve aquí y continúa tu consulta." }),
-  );
+  ].filter(Boolean));
 }
 function formularioAcceso(card, datos) {
   const err = el("p", { class: "err" });
