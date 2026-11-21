@@ -24,7 +24,7 @@ async function vincularPlanAnterior(legado, cuenta) {
 }
 
 export default async function handler(req, res) {
-  if (!db.hayBaseDeDatos()) return res.status(503).json({ error: "Las cuentas aún no están activas." });
+  if (!db.hayBaseDeDatos() || !(await cu.cuentasListas())) return res.status(503).json({ error: "Las cuentas aún no están activas." });
   const ip = ipDe(req);
   try {
     if (req.method === "GET") {

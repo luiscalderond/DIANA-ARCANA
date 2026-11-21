@@ -9,7 +9,7 @@ import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astr
 import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
 import { usarConsulta, revisarMensaje, barajaSinCobro, idValido, datosDeposito } from "../lib/acceso.js";
 import { hayBaseDeDatos, guardarConversacion } from "../lib/db.js";
-import { cuentaDeToken, tokenDe, claveDeCuenta, guardarDatosCuenta } from "../lib/cuentas.js";
+import { cuentaDeToken, tokenDe, claveDeCuenta, guardarDatosCuenta, cuentasListas } from "../lib/cuentas.js";
 import { perfilValido, perfilDeCuenta, saludoNuevo, datosConPerfil } from "../lib/perfil.js";
 import { publica } from "./cuenta.js";
 
@@ -82,8 +82,8 @@ export default async function handler(req, res) {
   let cuenta = null;
   if (hayBaseDeDatos()) {
     // Si las tablas de cuentas aún no existen en Supabase, sigue el modo anterior por equipo.
-    let sinTablas = false;
-    try { cuenta = await cuentaDeToken(tokenDe(req)); } catch (e) { console.error("Sesión", e); sinTablas = true; }
+    let sinTablas = !(await cuentasListas());
+    if (!sinTablas) try { cuenta = await cuentaDeToken(tokenDe(req)); } catch (e) { console.error("Sesión", e); sinTablas = true; }
     if (!cuenta && !sinTablas) return res.status(401).json({ login: true, error: "Entra con tu cuenta para continuar." });
   }
   const dispositivo = cuenta ? claveDeCuenta(cuenta.id) : body.dispositivo;
