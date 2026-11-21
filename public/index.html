@@ -75,7 +75,7 @@ nav{display:flex;align-items:center;justify-content:space-between;gap:16px;paddi
 }
 
 /* Pasos */
-.band{background:var(--cloth);border-block:1px solid var(--veil)}
+.band{background:rgba(33,26,46,.78);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);border-block:1px solid var(--veil)}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:40px;padding:0;list-style:none;counter-reset:s}
 .steps li{counter-increment:s;min-width:0}
 .steps li::before{content:counter(s,upper-roman);display:block;font-family:var(--label);color:var(--candle);font-size:20px;margin-bottom:10px}
@@ -139,11 +139,15 @@ footer .wrap{display:grid;gap:12px}
   .steps,.services,form{grid-template-columns:1fr}
   .navlinks{display:none}
 }
+#cielo{position:fixed;inset:0;z-index:0;pointer-events:none}
+body>*:not(#cielo):not(.musica-flot):not(script){position:relative;z-index:1}
+header{background:rgba(22,18,31,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .musica-flot{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:40;width:48px;height:48px;border-radius:50%;border:1px solid var(--candle,#d9b46a);background:rgba(22,18,31,.85);color:#d9b46a;font-size:22px;cursor:pointer;display:grid;place-items:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
 .musica-flot[aria-pressed="false"]{opacity:.55}
 </style>
 </head>
 <body>
+<canvas id="cielo" aria-hidden="true"></canvas>
 
 
 <header>
@@ -338,6 +342,7 @@ document.getElementById('agendaForm').addEventListener('submit', function(e){
 </script>
 
 <button class="musica-flot" id="musica" type="button" aria-pressed="false" aria-label="Música relajante" title="Música relajante"><span aria-hidden="true">🎵</span></button>
+<script src="/cielo.js" defer></script>
 <script src="/musica.js"></script>
 <script>
   // Los navegadores no dejan sonar música sin un toque: empieza con el primer toque o tecla.
