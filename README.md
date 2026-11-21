@@ -33,6 +33,7 @@ Variables de entorno en Vercel:
 - `CUENTA_DEPOSITO`: banco, tipo y número de cuenta, nombre y cédula del titular (puede ir en varias líneas).
 - `WHATSAPP_DIANA`: número con código de país, por ejemplo `593991234567`.
 - `ADMIN_CLAVE`: clave del panel, mínimo 8 caracteres.
+- Topes contra abusos (opcionales): `GRATIS_POR_IP` (4 gratis por conexión en 24 h), `MENSAJES_GRATIS` (45 mensajes sin plan), `MENSAJES_TRAS_ULTIMA` (20 mensajes tras la última consulta), `MENSAJES_DIA` (150 por equipo en 24 h). Los mensajes se marcan en arcana_consultas con id `m:...` (y `v:...` para barajas) y no cuentan como consultas.
 - Opcionales: `CONSULTAS_GRATIS` (2), `PRECIO_DIA` (1.99), `PRECIO_SEMANAL` (4.99), `TIRADAS_DIA` (4), `TIRADAS_SEMANAL` (10).
 
 ## Costos

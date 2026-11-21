@@ -10,8 +10,16 @@ function autorizado(req) {
   return timingSafeEqual(Buffer.from(dada), Buffer.from(esperada));
 }
 
+// Máximo 10 intentos fallidos por hora y conexión (aproximado: memoria de cada servidor).
+const fallos = new Map();
 export default async function handler(req, res) {
-  if (!autorizado(req)) return res.status(401).json({ error: "Clave incorrecta." });
+  const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "anon";
+  const hora = new Date().toISOString().slice(0, 13), k = hora + "|" + ip;
+  if ((fallos.get(k) || 0) >= 10) return res.status(429).json({ error: "Demasiados intentos. Espera una hora." });
+  if (!autorizado(req)) {
+    fallos.set(k, (fallos.get(k) || 0) + 1); if (fallos.size > 2000) fallos.clear();
+    return res.status(401).json({ error: "Clave incorrecta." });
+  }
   if (!db.hayBaseDeDatos()) return res.status(503).json({ error: "Falta conectar la base de datos." });
   try {
     if (req.method === "GET") return res.status(200).json({ suscriptoras: await db.listarSuscriptoras() });

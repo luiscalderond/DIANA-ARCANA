@@ -5,12 +5,13 @@ import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { SISTEMA, SALUDO } from "../lib/prompt.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
 import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
-import { usarConsulta, idValido, datosDeposito } from "../lib/acceso.js";
+import { usarConsulta, revisarMensaje, barajaSinCobro, idValido, datosDeposito } from "../lib/acceso.js";
 
 const client = new Anthropic();
 
 const MAX_MENSAJES = 40;           // turnos que se aceptan por consulta
-const MAX_CARACTERES = 4000;       // por mensaje
+const MAX_CARACTERES = 4000;       // por mensaje de Arcana (incluye notas internas)
+const MAX_CARACTERES_CLIENTA = 1200; // por mensaje de la clienta: textos enormes encarecen cada consulta
 const MAX_IMAGEN = 3_500_000;      // bytes en base64
 const LIMITE_DIARIO = Number(process.env.LIMITE_DIARIO || 250); // mensajes por persona por día
 
@@ -30,7 +31,7 @@ function limpiarHistorial(mensajes) {
   const out = [];
   for (const m of mensajes) {
     if (!m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string") return null;
-    const content = m.content.slice(0, MAX_CARACTERES * 2).trim();
+    const content = m.content.slice(0, m.role === "user" ? MAX_CARACTERES_CLIENTA : MAX_CARACTERES * 2).trim();
     if (!content) continue;
     out.push({ role: m.role, content });
   }
@@ -55,6 +56,12 @@ export default async function handler(req, res) {
 
   // Consultas gratis y suscripción.
   if (!idValido(body.dispositivo) || !idValido(body.consulta)) return res.status(400).json({ error: "Recarga la página para empezar una consulta." });
+  // Topes de conversación antes de llamar a la IA (cada mensaje cuesta).
+  try {
+    const rev = await revisarMensaje({ dispositivo: body.dispositivo, ip });
+    if (!rev.ok && rev.motivo === "dia") return res.status(429).json({ error: "Por hoy ya conversamos mucho. Vuelve mañana y seguimos con tu lectura." });
+    if (!rev.ok) return res.status(402).json({ suscripcion: true, pendiente: rev.pendiente, agotado: rev.agotado || undefined, ...datosDeposito() });
+  } catch (e) { console.error("Revisar mensaje", e); }
   // Cada tirada o servicio gasta una consulta (como máximo una por mensaje). Se cobra al empezarlo.
   let cobro = null, bloqueo = null;
   async function cobrar() {
@@ -130,7 +137,9 @@ export default async function handler(req, res) {
     },
     run: async ({ tipo }) => {
       try {
-        if (!/Plan mostrado/.test(textoHistorial + memo)) {
+        // Si ya se mostró el plan (y se cobró), la baraja no cobra otra vez; se verifica en la base, no solo en el historial.
+        const yaCobrada = /Plan mostrado/.test(memo) || (/Plan mostrado/.test(textoHistorial) && await barajaSinCobro({ dispositivo: body.dispositivo, ip }).catch(() => false));
+        if (!yaCobrada) {
           const c = await cobrar();
           if (c.error) return ERROR_ACCESO;
           if (!c.permitido) return noDisponible();
