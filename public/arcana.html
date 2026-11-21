@@ -121,19 +121,34 @@ let voz = null;
 function elegirVoz() {
   if (!synth) return;
   const vs = synth.getVoices().filter((v) => v.lang && v.lang.toLowerCase().startsWith("es"));
-  const fem = /(paulina|monica|mónica|helena|sabina|elvira|dalia|paloma|lupe|francisca|google español|female|mujer|marisol|laura|camila)/i;
-  const latam = (v) => /es-(mx|us|419|ec|co|ar|cl|pe)/i.test(v.lang);
-  voz = vs.find((v) => fem.test(v.name) && latam(v)) || vs.find((v) => latam(v)) || vs.find((v) => fem.test(v.name)) || vs[0] || null;
+  // Puntaje: voces neuronales/en línea suenan mucho más naturales que las locales básicas.
+  const puntos = (v) => {
+    let p = 0;
+    if (/natural|neural|online|enhanced|premium|mejorad/i.test(v.name)) p += 50;
+    if (/google/i.test(v.name)) p += 30;
+    if (v.localService === false) p += 15;
+    if (/es-(ec|co|mx|us|419|pe|cl|ar)/i.test(v.lang)) p += 10;
+    if (/(paulina|monica|mónica|andrea|dalia|paloma|elvira|helena|sabina|lupe|francisca|marisol|camila|salome|female|mujer)/i.test(v.name)) p += 8;
+    if (/compact|espeak/i.test(v.name)) p -= 40;
+    return p;
+  };
+  voz = vs.sort((a, b) => puntos(b) - puntos(a))[0] || null;
 }
 if (synth) { elegirVoz(); synth.onvoiceschanged = elegirVoz; }
+// Une frases en trozos de hasta ~180 letras: menos pausas robóticas, sin pasar el límite de Chrome.
+function trozos(texto) {
+  const frases = texto.split(/\n+|(?<=[.!?;:])\s+/).map((x) => x.trim()).filter(Boolean), out = [];
+  for (const f of frases) { if (out.length && (out[out.length - 1] + " " + f).length <= 180) out[out.length - 1] += " " + f; else out.push(f); }
+  return out;
+}
 function hablar(texto, forzar) {
   if (!synth || (!voiceOn && !forzar)) return;
   synth.cancel();
-  for (const parte of texto.split(/\n+|(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean)) {
+  for (const parte of trozos(texto)) {
     const u = new SpeechSynthesisUtterance(parte);
     u.lang = voz ? voz.lang : "es-419";
     if (voz) u.voice = voz;
-    u.rate = 0.95; u.pitch = 1.0;
+    u.rate = 0.92; u.pitch = 1.0;
     synth.speak(u);
   }
 }
