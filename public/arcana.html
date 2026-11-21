@@ -92,6 +92,10 @@ textarea,button{font:inherit}
 .nota-musica{color:var(--mist);font-size:13px}
 .eyebrow{font-family:var(--label);letter-spacing:.18em;font-size:12px;color:var(--candle);text-transform:uppercase}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:999px;border:1px solid var(--candle);background:var(--candle);color:var(--night);font-weight:700;cursor:pointer}
+.faq{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+.faq::-webkit-scrollbar{display:none}
+.faq button{flex:none;border:1px solid var(--veil);background:rgba(33,26,46,.7);color:var(--mist);border-radius:999px;padding:6px 12px;font:13px/1.2 inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
+.faq button:hover{border-color:var(--candle);color:var(--ink)}
 .bar{background:rgba(22,18,31,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);margin-inline:-16px;padding-inline:16px;border-top:1px solid var(--veil);padding-block:12px;display:flex;flex-direction:column;gap:8px}
 .preview{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mist)}
 .preview img{height:48px;border-radius:6px}
@@ -151,6 +155,7 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 
   <div class="bar">
     <div class="preview" id="preview" hidden><img id="previewImg" alt="Foto de la tirada"><span>Foto lista para enviar</span><button class="linkbtn" id="clearPhoto" type="button">Quitar</button></div>
+    <div class="faq" id="faq" aria-label="Preguntas frecuentes"></div>
     <div class="row">
       <button class="icon" id="photoBtn" type="button" aria-label="Tomar o subir foto de las cartas" title="Foto de las cartas">📷</button>
       <input type="file" id="photo" accept="image/jpeg,image/png,image/webp,image/heic,image/*" capture="environment" hidden>
@@ -213,6 +218,28 @@ function hablar(texto, forzar) {
 function callar() { if (synth) synth.cancel(); }
 
 /* ---------- Mensajes ---------- */
+/* Preguntas frecuentes: respuestas fijas que se muestran sin consultar a la IA (no cuestan nada). */
+const FAQ = [
+  ["¿De dónde sale la información?", "Los significados de las cartas vienen de la tradición del tarot Rider-Waite, escrita por A. E. Waite en La clave pictórica del tarot (1910), y de los autores que la siguieron. Tu carta astral se calcula con las posiciones reales de los planetas el día, la hora y en la ciudad donde naciste, y se interpreta con la astrología tradicional. Yo uno esos significados con tu pregunta para darte una lectura personal."],
+  ["Planes y precios", "Tienes 2 consultas gratis. Cada tirada, carta astral, ritual o lectura de registros akáshicos es una consulta; conversar conmigo no gasta. Después puedes elegir el pase de 24 horas por $1.99, con hasta 4 tiradas, o el plan semanal por $4.99, con hasta 10 tiradas en 7 días, que es el que más rinde."],
+  ["¿Cómo pago?", "Cuando terminen tus consultas gratis aparecerá un formulario. Eliges tu plan, dejas tu nombre, teléfono y email, y te mostraré la cuenta para depositar o transferir con tu código de referencia. Envías el comprobante por WhatsApp y Diana activa tu plan al confirmarlo."],
+  ["Limpiezas con Diana", "Las limpiezas energéticas las hace Diana en persona. Puedes agendar la tuya en la sección Agenda de la página de inicio.", "/#agenda"],
+  ["¿Arcana es una persona?", "Soy Arcana, la asistente virtual de Diana, una inteligencia artificial. Mis lecturas son una guía de autoconocimiento y no reemplazan consejo médico, legal ni financiero."],
+];
+function pintarFaq() {
+  const cont = $("faq"); if (!cont) return;
+  cont.replaceChildren(...FAQ.map(([preg, resp, enlace]) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = preg;
+    b.onclick = () => {
+      addMsg("u", preg);
+      const d = addMsg("a", resp);
+      if (enlace) { const a = document.createElement("a"); a.href = enlace; a.textContent = " Ir a la Agenda"; a.style.color = "var(--candle)"; d.appendChild(a); }
+      addReplay(d, resp);
+      hablar(resp);
+    };
+    return b;
+  }));
+}
 function addMsg(role, text, imgUrl) {
   const w = $("welcome"); if (w) w.remove();
   const d = document.createElement("div");
@@ -337,6 +364,7 @@ function begin(conVoz) {
   started = true;
   const d = addMsg("a", SALUDO); addReplay(d, SALUDO);
   if (conVoz) hablar(SALUDO);
+  pintarFaq();
 }
 
 /* ---------- Foto: se reduce en el celular antes de enviarla ---------- */
