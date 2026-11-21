@@ -3,6 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { SISTEMA, SALUDO } from "../lib/prompt.js";
+import { notaNatal } from "../lib/numerologia.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
 import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
 import { usarConsulta, revisarMensaje, barajaSinCobro, idValido, datosDeposito } from "../lib/acceso.js";
@@ -53,6 +54,12 @@ export default async function handler(req, res) {
   catch { return res.status(400).json({ error: "La conversación no es válida." }); }
   const mensajes = limpiarHistorial(body.messages);
   if (!mensajes) return res.status(400).json({ error: "La conversación no es válida." });
+  // Si la clienta acaba de dar su fecha de nacimiento, el signo y el número de vida se calculan aquí (sin errores de suma).
+  const ultimo = mensajes[mensajes.length - 1];
+  if (ultimo && ultimo.role === "user") {
+    if (typeof ultimo.content === "string") ultimo.content += notaNatal(ultimo.content);
+    else if (Array.isArray(ultimo.content)) { const tb = ultimo.content.find((b) => b.type === "text"); if (tb) tb.text += notaNatal(tb.text); }
+  }
 
   // Consultas gratis y suscripción.
   if (!idValido(body.dispositivo) || !idValido(body.consulta)) return res.status(400).json({ error: "Recarga la página para empezar una consulta." });
