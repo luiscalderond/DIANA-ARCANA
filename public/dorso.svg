@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 210">
+  <defs>
+    <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2560"/><stop offset=".55" stop-color="#1d1433"/><stop offset="1" stop-color="#2b1840"/></linearGradient>
+    <linearGradient id="o" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d99a"/><stop offset=".5" stop-color="#c9a24f"/><stop offset="1" stop-color="#f0d28a"/></linearGradient>
+    <radialGradient id="h" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#f3d99a" stop-opacity=".35"/><stop offset="1" stop-color="#f3d99a" stop-opacity="0"/></radialGradient>
+    <pattern id="p" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M6 1.5 L7 5 L10.5 6 L7 7 L6 10.5 L5 7 L1.5 6 L5 5Z" fill="#c9a24f" opacity=".16"/></pattern>
+  </defs>
+  <rect width="120" height="210" rx="10" fill="url(#f)"/>
+  <rect width="120" height="210" rx="10" fill="url(#p)"/>
+  <rect x="5" y="5" width="110" height="200" rx="7" fill="none" stroke="url(#o)" stroke-width="1.6"/>
+  <rect x="9" y="9" width="102" height="192" rx="5" fill="none" stroke="url(#o)" stroke-width=".6" stroke-dasharray="1.5 2.5"/>
+  <circle cx="60" cy="105" r="44" fill="url(#h)"/>
+  <circle cx="60" cy="105" r="36" fill="none" stroke="url(#o)" stroke-width=".8"/>
+  <circle cx="60" cy="105" r="31" fill="none" stroke="url(#o)" stroke-width=".4"/>
+  <g fill="url(#o)">
+    <g id="r"><path d="M60 62 L62 74 L58 74Z"/><path d="M60 148 L62 136 L58 136Z"/><path d="M17 105 L29 103 L29 107Z"/><path d="M103 105 L91 103 L91 107Z"/></g>
+    <use href="#r" transform="rotate(45 60 105)"/>
+  </g>
+  <g fill="#c9a24f"><circle cx="60" cy="71" r="1.2"/><circle cx="60" cy="139" r="1.2"/><circle cx="26" cy="105" r="1.2"/><circle cx="94" cy="105" r="1.2"/></g>
+  <circle cx="60" cy="105" r="15" fill="url(#o)"/>
+  <circle cx="66" cy="101" r="13" fill="#1d1433"/>
+  <circle cx="60" cy="105" r="19" fill="none" stroke="url(#o)" stroke-width=".7"/>
+  <path d="M73 96 l1 3 3 1 -3 1 -1 3 -1 -3 -3 -1 3 -1z" fill="#f3d99a"/>
+  <g fill="url(#o)">
+    <path d="M60 22 l2.2 6 6 2.2 -6 2.2 -2.2 6 -2.2 -6 -6 -2.2 6 -2.2z"/>
+    <path d="M60 172 l2.2 6 6 2.2 -6 2.2 -2.2 6 -2.2 -6 -6 -2.2 6 -2.2z"/>
+    <circle cx="20" cy="22" r="1.6"/><circle cx="100" cy="22" r="1.6"/><circle cx="20" cy="188" r="1.6"/><circle cx="100" cy="188" r="1.6"/>
+  </g>
+  <path d="M28 46 Q60 34 92 46 M28 164 Q60 176 92 164" fill="none" stroke="url(#o)" stroke-width=".6"/>
+</svg>
