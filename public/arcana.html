@@ -113,6 +113,13 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 .paywall .check{display:flex;gap:8px;align-items:flex-start;font-size:13px}
 .paywall .check input{margin-top:3px}
 .paywall .cuenta{white-space:pre-wrap;background:var(--night);border:1px dashed var(--candle);border-radius:10px;padding:12px;color:var(--ink);font-size:15px}
+.paywall .planes{border:0;margin:0;padding:0;display:grid;gap:8px}
+.paywall .planes legend{font-size:14px;color:var(--mist);margin-bottom:6px}
+.paywall .plan-op{display:flex;gap:10px;align-items:center;border:1px solid var(--veil);border-radius:12px;padding:12px;cursor:pointer;color:var(--ink)}
+.paywall .plan-op:has(input:checked){border-color:var(--candle);background:rgba(217,180,106,.08)}
+.paywall .plan-op span{display:grid;gap:2px}
+.paywall .plan-op b{font-size:16px}
+.paywall .plan-op small{color:var(--mist);font-size:13px}
 .paywall .err{color:var(--rose);font-size:14px}
 .btn.wa{background:#25d366;border-color:#25d366;color:#0b2a17;text-decoration:none;justify-content:center}
 
@@ -378,6 +385,7 @@ async function send(auto) {
     addReplay(bubble, j.text);
     hablar(j.text);
     if (j.baraja) mostrarBaraja(j.baraja);
+    if (j.suscripcion) mostrarSuscripcion(j);
   } catch (e) {
     bubble.classList.remove("thinking");
     bubble.textContent = "No hay conexión. Revisa tu internet y vuelve a enviar tu mensaje.";
@@ -401,9 +409,11 @@ function enlaceWhatsapp(datos, referencia, nombre) {
   return el("a", { class: "btn wa", href: `https://wa.me/${datos.whatsapp}?text=${encodeURIComponent(msg)}`, target: "_blank", rel: "noopener", text: "Enviar comprobante por WhatsApp" });
 }
 function pantallaDeposito(card, datos, referencia, nombre) {
+  const dia = String(referencia).startsWith("DD-");
+  const monto = dia ? (datos.precioDia ?? 2) : datos.precio;
   card.replaceChildren(
     el("h2", { text: "¡Gracias! Solo falta tu depósito" }),
-    el("p", { text: `Deposita o transfiere $${datos.precio} a esta cuenta y envía el comprobante. Diana activará tu suscripción por 30 días al confirmarlo.` }),
+    el("p", { text: `Deposita o transfiere $${monto} a esta cuenta y envía el comprobante. Diana activará ${dia ? "tu pase de 24 horas ilimitadas" : "tu suscripción por 30 días"} al confirmarlo.` }),
     el("div", { class: "cuenta", text: datos.cuenta }),
     el("p", { text: `Tu código de referencia: ${referencia}. Escríbelo en la transferencia o en tu mensaje.` }),
     enlaceWhatsapp(datos, referencia, nombre),
@@ -441,13 +451,16 @@ function mostrarSuscripcion(datos, cardExistente) {
       el("label", {}, "Nombre completo", el("input", { type: "text", name: "nombre", required: "", autocomplete: "name" })),
       el("label", {}, "Teléfono (WhatsApp)", el("input", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567" })),
       el("label", {}, "Email", el("input", { type: "email", name: "email", required: "", autocomplete: "email" })),
+      el("fieldset", { class: "planes" }, el("legend", { text: "Elige tu plan" }),
+        el("label", { class: "plan-op" }, el("input", { type: "radio", name: "plan", value: "dia", checked: "" }), el("span", {}, el("b", { text: `Pase de 24 horas · $${datos.precioDia ?? 2}` }), el("small", { text: "Tiradas ilimitadas durante un día" }))),
+        el("label", { class: "plan-op" }, el("input", { type: "radio", name: "plan", value: "mensual" }), el("span", {}, el("b", { text: `Mensual · $${datos.precio}` }), el("small", { text: "Consultas ilimitadas por 30 días" })))),
       el("label", { class: "check" }, el("input", { type: "checkbox", name: "acepto", required: "" }), "Autorizo a Diana Arcana a usar estos datos solo para gestionar mi suscripción y contactarme."),
-      err, el("button", { class: "btn", type: "submit", text: "Quiero suscribirme" }));
+      err, el("button", { class: "btn", type: "submit", text: "Continuar" }));
     f.onsubmit = async (e) => {
       e.preventDefault(); err.textContent = "";
       const fd = new FormData(f), boton = f.querySelector("button"); boton.disabled = true;
       const r = await fetch("/api/suscribir", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dispositivo, nombre: fd.get("nombre"), telefono: fd.get("telefono"), email: fd.get("email"), acepto: fd.get("acepto") === "on" }) }).catch(() => null);
+        body: JSON.stringify({ dispositivo, nombre: fd.get("nombre"), telefono: fd.get("telefono"), email: fd.get("email"), plan: fd.get("plan"), acepto: fd.get("acepto") === "on" }) }).catch(() => null);
       const j = r ? await r.json().catch(() => ({})) : {};
       boton.disabled = false;
       if (!r || !r.ok) { err.textContent = j.error || "No hay conexión. Intenta de nuevo."; return; }
@@ -457,8 +470,7 @@ function mostrarSuscripcion(datos, cardExistente) {
     ya.onclick = () => formularioAcceso(card, datos);
     card.replaceChildren(
       el("h2", { text: "Tus consultas gratis ya se usaron" }),
-      el("p", { text: "Suscríbete y consulta con Arcana sin límite: tarot, carta astral, rituales y registros akáshicos." }),
-      el("p", { class: "price", text: `$${datos.precio} al mes` }), f, ya);
+      el("p", { text: "Sigue consultando con Arcana sin límite: tarot, carta astral, rituales y registros akáshicos." }), f, ya);
   }
   if (!cardExistente) { log.querySelectorAll(".paywall").forEach((x) => x.remove()); log.appendChild(card); log.scrollTop = log.scrollHeight; }
 }

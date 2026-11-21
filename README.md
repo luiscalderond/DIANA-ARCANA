@@ -18,14 +18,14 @@ Web de Diana Arcana con **Arcana**, la asistente virtual que lee tarot, calcula 
 2. Importa el repositorio `diana-arcana`. Deja las opciones como vienen y no pulses Deploy todavía.
 3. Abre **Environment Variables** y agrega:
    - `ANTHROPIC_API_KEY`: tu clave de [console.anthropic.com](https://console.anthropic.com).
-   - `LIMITE_DIARIO` (opcional): mensajes por persona por día. Por defecto, 60.
+   - `LIMITE_DIARIO` (opcional): mensajes por persona por día. Por defecto, 250 (protege contra abusos; alcanza para varias lecturas al día).
 4. Pulsa **Deploy**. En un minuto tendrás un enlace como `diana-arcana.vercel.app`.
 
 Cada vez que se sube un cambio a GitHub, Vercel publica la nueva versión sola.
 
 ## Suscripción
 
-Cada persona tiene 3 consultas gratis (una consulta es una conversación; "Nueva consulta" empieza otra). En la cuarta, Arcana pide la suscripción: la persona llena nombre, teléfono y email, recibe la cuenta para depositar y un código de referencia, y envía el comprobante por WhatsApp. Diana entra a `/admin.html`, busca la referencia y pulsa **Activar 30 días**. Si la persona cambia de celular o navegador, usa "Ya soy suscriptora" con su email y teléfono.
+Cada persona tiene 3 consultas gratis. Cada tirada, carta astral, ritual o lectura de registros akáshicos gasta una consulta; conversar no gasta. Planes: pase de 24 horas ilimitadas ($2, referencia DD-) o mensual ($4.99, referencia DA-). El panel activa 24 horas o 30 días según la referencia. En la cuarta, Arcana pide la suscripción: la persona llena nombre, teléfono y email, recibe la cuenta para depositar y un código de referencia, y envía el comprobante por WhatsApp. Diana entra a `/admin.html`, busca la referencia y pulsa **Activar 30 días**. Si la persona cambia de celular o navegador, usa "Ya soy suscriptora" con su email y teléfono.
 
 Variables de entorno en Vercel:
 
@@ -33,7 +33,7 @@ Variables de entorno en Vercel:
 - `CUENTA_DEPOSITO`: banco, tipo y número de cuenta, nombre y cédula del titular (puede ir en varias líneas).
 - `WHATSAPP_DIANA`: número con código de país, por ejemplo `593991234567`.
 - `ADMIN_CLAVE`: clave del panel, mínimo 8 caracteres.
-- `CONSULTAS_GRATIS` (opcional, por defecto 3) y `PRECIO_MENSUAL` (opcional, por defecto 4.99).
+- `CONSULTAS_GRATIS` (opcional, por defecto 3), `PRECIO_MENSUAL` (opcional, por defecto 4.99) y `PRECIO_DIA` (opcional, por defecto 2).
 
 ## Costos
 

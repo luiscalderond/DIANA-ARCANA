@@ -5,14 +5,14 @@ import { betaTool } from "@anthropic-ai/sdk/helpers/beta/json-schema";
 import { SISTEMA, SALUDO } from "../lib/prompt.js";
 import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astro.js";
 import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
-import { verificarAcceso, idValido, datosDeposito } from "../lib/acceso.js";
+import { usarConsulta, idValido, datosDeposito } from "../lib/acceso.js";
 
 const client = new Anthropic();
 
 const MAX_MENSAJES = 40;           // turnos que se aceptan por consulta
 const MAX_CARACTERES = 4000;       // por mensaje
 const MAX_IMAGEN = 3_500_000;      // bytes en base64
-const LIMITE_DIARIO = Number(process.env.LIMITE_DIARIO || 60); // mensajes por persona por día
+const LIMITE_DIARIO = Number(process.env.LIMITE_DIARIO || 250); // mensajes por persona por día
 
 // Límite simple por IP. Vive en la memoria de cada servidor de Vercel, así que es aproximado.
 const contador = new Map();
@@ -55,13 +55,19 @@ export default async function handler(req, res) {
 
   // Consultas gratis y suscripción.
   if (!idValido(body.dispositivo) || !idValido(body.consulta)) return res.status(400).json({ error: "Recarga la página para empezar una consulta." });
-  try {
-    const acceso = await verificarAcceso({ dispositivo: body.dispositivo, consulta: body.consulta, ip });
-    if (!acceso.permitido) return res.status(402).json({ suscripcion: true, pendiente: acceso.pendiente, ...datosDeposito() });
-  } catch (e) {
-    console.error("Acceso", e);
-    return res.status(503).json({ error: "No pude verificar tu acceso. Intenta de nuevo en un momento." });
+  // Cada tirada o servicio gasta una consulta (como máximo una por mensaje). Se cobra al empezarlo.
+  let cobro = null, bloqueo = null;
+  async function cobrar() {
+    if (cobro) return cobro;
+    try { cobro = await usarConsulta({ dispositivo: body.dispositivo, ip }); }
+    catch (e) { console.error("Acceso", e); cobro = { permitido: false, error: true }; }
+    if (!cobro.permitido && !cobro.error) bloqueo = { suscripcion: true, pendiente: cobro.pendiente, ...datosDeposito() };
+    return cobro;
   }
+  const NO_DISPONIBLE = "BLOQUEADO: la persona ya usó sus consultas gratis y no tiene un plan activo. No hagas la tirada ni el servicio. Dile con calidez, en dos o tres frases, que sus consultas gratis terminaron y que en pantalla aparecieron dos planes para seguir: el pase de 24 horas ilimitadas o la suscripción mensual. Invítala a elegir uno para continuar justo donde quedaron.";
+  const ERROR_ACCESO = "Error: no pude verificar sus consultas disponibles en este momento. Pídele que intente de nuevo en un momento.";
+  const notaCobro = (c) => c.suscrita ? "" : c.restantes === 0 ? " Nota: esta es su última consulta gratis; puedes mencionarlo con suavidad al final." : c.restantes ? ` Nota: le quedan ${c.restantes} consultas gratis después de esta.` : "";
+  const textoHistorial = mensajes.slice(-12).map((m) => (typeof m.content === "string" ? m.content : m.content.map((b) => b.text || "").join(" "))).join("\n");
 
   // Foto de la tirada: se adjunta al último mensaje del usuario.
   const img = body.image;
@@ -94,6 +100,9 @@ export default async function handler(req, res) {
     },
     run: async ({ nombre, fecha, hora, lugar }) => {
       try {
+        const c = await cobrar();
+        if (c.error) return ERROR_ACCESO;
+        if (!c.permitido) return NO_DISPONIBLE;
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return "Error: la fecha debe ser AAAA-MM-DD.";
         const sinHora = !/^\d{1,2}:\d{2}$/.test(hora || "");
         const p = await buscarLugar(lugar);
@@ -119,6 +128,11 @@ export default async function handler(req, res) {
     },
     run: async ({ tipo }) => {
       try {
+        if (!/Plan mostrado/.test(textoHistorial + memo)) {
+          const c = await cobrar();
+          if (c.error) return ERROR_ACCESO;
+          if (!c.permitido) return NO_DISPONIBLE;
+        }
         baraja = barajar(tipo);
         const n = baraja.posiciones.length;
         return `Mazo barajado y mostrado en abanico. La persona va a elegir ${n} ${n === 1 ? "carta" : "cartas"} tocándolas; la primera que elija va al lugar 1 (${baraja.posiciones[0]})${n > 1 ? ", la segunda al lugar 2, y así" : ""}. Invítala a elegir con su intuición y espera su mensaje con las cartas.`;
@@ -143,12 +157,33 @@ export default async function handler(req, res) {
     },
     run: async ({ tipo, mazo_propio }) => {
       try {
+        const c = await cobrar();
+        if (c.error) return ERROR_ACCESO;
+        if (!c.permitido) return NO_DISPONIBLE;
         indice = plan(tipo, mazo_propio);
         memo += `Plan mostrado (${indice.nombre}, ${mazo_propio ? "mazo propio" : "tirada virtual"}): ${indice.pasos.map((p, i) => i + 1 + " " + p.titulo).join(", ")}\n`;
-        return `Índice mostrado en pantalla: ${indice.pasos.map((p, i) => `Paso ${i + 1}: ${p.titulo}`).join("; ")}.`;
+        return `Índice mostrado en pantalla: ${indice.pasos.map((p, i) => `Paso ${i + 1}: ${p.titulo}`).join("; ")}.` + notaCobro(c);
       } catch (e) {
         return "Error: " + e.message;
       }
+    },
+  });
+
+  const iniciarServicio = betaTool({
+    name: "iniciar_servicio",
+    description: "Registra el inicio de un ritual personalizado o de una lectura de registros akáshicos (cada uno cuenta como una consulta). Úsala justo antes de crear el ritual o de abrir los registros. Si responde BLOQUEADO, no hagas el servicio.",
+    inputSchema: {
+      type: "object",
+      properties: { servicio: { type: "string", enum: ["ritual", "registros_akashicos"] } },
+      required: ["servicio"],
+      additionalProperties: false,
+    },
+    run: async ({ servicio }) => {
+      const c = await cobrar();
+      if (c.error) return ERROR_ACCESO;
+      if (!c.permitido) return NO_DISPONIBLE;
+      memo += `Servicio iniciado: ${servicio}\n`;
+      return "Listo, puedes continuar con el servicio." + notaCobro(c);
     },
   });
 
@@ -184,7 +219,7 @@ export default async function handler(req, res) {
       output_config: { effort: img ? "medium" : "low" },
       cache_control: { type: "ephemeral" },
       system: SISTEMA,
-      tools: [cartaAstral, tiradaVirtual, mostrarPlan, mostrarDiagrama],
+      tools: [cartaAstral, tiradaVirtual, mostrarPlan, mostrarDiagrama, iniciarServicio],
       messages: mensajes,
     });
 
@@ -192,7 +227,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ text: "Prefiero no responder a eso. ¿Te acompaño con una lectura de tarot, tu carta astral o un ritual?" });
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
-    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined });
+    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, ...(bloqueo || {}) });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
     if (error instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });

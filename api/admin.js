@@ -1,7 +1,7 @@
 // /api/admin — lista y activa suscriptoras. Protegido con la variable ADMIN_CLAVE.
 import { timingSafeEqual } from "node:crypto";
 import * as db from "../lib/db.js";
-import { leerCuerpo } from "../lib/acceso.js";
+import { leerCuerpo, PLANES, planDeReferencia } from "../lib/acceso.js";
 
 function autorizado(req) {
   const esperada = process.env.ADMIN_CLAVE || "";
@@ -21,7 +21,8 @@ export default async function handler(req, res) {
     if (!s) return res.status(404).json({ error: "No existe esa suscriptora." });
     if (b.accion === "activar") {
       const base = s.activa_hasta && new Date(s.activa_hasta) > new Date() ? new Date(s.activa_hasta) : new Date();
-      base.setDate(base.getDate() + 30);
+      const plan = b.plan === "dia" || b.plan === "mensual" ? b.plan : planDeReferencia(s.referencia);
+      base.setTime(base.getTime() + PLANES[plan].horas * 3600 * 1000);
       await db.actualizarSuscriptora(s.id, { estado: "activa", activa_hasta: base.toISOString() });
     } else if (b.accion === "desactivar") {
       await db.actualizarSuscriptora(s.id, { estado: "inactiva" });
