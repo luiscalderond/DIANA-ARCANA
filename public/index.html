@@ -214,6 +214,28 @@ header{position:sticky;top:0;z-index:30!important;background:rgba(18,13,31,.72);
   .plan.destacado{transform:none}
 }
 @media (max-width:560px){.confianza{grid-template-columns:1fr 1fr;gap:12px}.confianza div{font-size:13.5px}.btn-xl{width:100%;justify-content:center}}
+
+/* Servicios dinámicos: tarjetas con arcano, una frase y botón */
+.srvs{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:32px}
+.srv{position:relative;aspect-ratio:4/5;border-radius:20px;overflow:hidden;text-decoration:none;color:var(--ink);isolation:isolate;border:1px solid rgba(246,223,160,.25);box-shadow:0 18px 40px -18px rgba(0,0,0,.8);transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s}
+.srv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%;z-index:-2;filter:saturate(1.15) contrast(1.05);transform:scale(1.04);transition:transform .8s ease}
+.srv::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(18,13,31,.05) 25%,rgba(30,12,50,.75) 58%,rgba(18,10,30,.97) 85%)}
+.srv:hover,.srv:focus-visible{transform:translateY(-6px);border-color:rgba(246,223,160,.7);box-shadow:0 26px 50px -18px rgba(176,51,126,.55)}
+.srv:hover img{transform:scale(1.12)}
+.srv-tag{position:absolute;top:14px;left:14px;font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:rgba(18,13,31,.7);color:var(--gold1);border:1px solid rgba(246,223,160,.4);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.srv.diana .srv-tag{color:#f2b8c8;border-color:rgba(242,184,200,.5)}
+.srv-txt{position:absolute;left:0;right:0;bottom:0;padding:20px;display:grid;gap:6px}
+.srv-txt b{font-family:var(--display);font-size:28px;font-weight:600;line-height:1.05}
+.srv-txt span{color:#e2d7ee;font-size:15px;line-height:1.35}
+.srv-txt em{font-style:normal;margin-top:8px;justify-self:start;padding:10px 18px;border-radius:999px;font:700 14px var(--body);color:#1a1029;background:linear-gradient(135deg,var(--gold1),var(--gold2) 55%,#e9c47c);box-shadow:0 8px 20px -6px rgba(217,180,106,.6)}
+.srv.diana .srv-txt em{background:linear-gradient(135deg,#f6c9d6,#c98a9a)}
+.desliza{display:none}
+@media (max-width:860px){
+  .srvs{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;margin-inline:-16px;padding:4px 16px 12px;scrollbar-width:none}
+  .srvs::-webkit-scrollbar{display:none}
+  .srv{flex:0 0 76%;scroll-snap-align:center}
+  .desliza{display:block;text-align:center;color:var(--mist);font-size:13px;margin-top:6px}
+}
 #cielo{position:fixed;inset:0;z-index:0;pointer-events:none}
 body>*:not(#cielo):not(.musica-flot):not(.portal):not(script){position:relative;z-index:1}
 header{background:rgba(22,18,31,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
@@ -297,46 +319,41 @@ header{background:rgba(22,18,31,.6);-webkit-backdrop-filter:blur(6px);backdrop-f
   <section id="servicios">
     <div class="wrap">
       <p class="eyebrow">Servicios</p>
-      <h2>Elige tu camino</h2>
-      <p class="lead">Arcana te atiende a cualquier hora con lecturas y rituales. Las limpiezas energéticas las hace Diana en persona.</p>
-      <div class="services">
-        <article class="svc">
-          <span class="tag tag-arcana">Con Arcana</span>
-          <span class="ico" aria-hidden="true">✦</span><h3>Lectura de tarot</h3>
-          <p>De una carta para el consejo del día hasta la Cruz Celta de diez cartas para situaciones complejas.</p>
-          <span class="price">1 consulta</span>
-        </article>
-        <article class="svc">
-          <span class="tag tag-arcana">Con Arcana</span>
-          <span class="ico" aria-hidden="true">☉</span><h3>Carta astral</h3>
-          <p>Tu carta calculada con tu fecha, hora y lugar de nacimiento. Personalidad, misión de vida, carrera o compatibilidad.</p>
-          <span class="price">1 consulta</span>
-        </article>
-        <article class="svc featured">
-          <span class="tag tag-arcana">Con Arcana</span>
-          <span class="ico" aria-hidden="true">✧</span><h3>Lectura híbrida</h3>
-          <p>Tu carta astral como base y el tarot para tu pregunta de hoy, unidos en una sola lectura.</p>
-          <span class="price">1 consulta</span>
-        </article>
-        <article class="svc">
-          <span class="tag tag-diana">Con Diana</span>
-          <span class="ico" aria-hidden="true">❋</span><h3>Limpieza energética</h3>
-          <p>Libera las cargas que pesan en tu energía y recupera tu equilibrio y tu calma, en una sesión presencial guiada por Diana.</p>
-          <span class="price">En persona · con cita</span>
-        </article>
-        <article class="svc">
-          <span class="tag tag-arcana">Con Arcana</span>
-          <span class="ico" aria-hidden="true">🕯</span><h3>Ritual personalizado</h3>
-          <p>Arcana crea un ritual para tu intención, sea amor, abundancia, protección o un nuevo comienzo. Pasos sencillos y solo ingredientes naturales y seguros.</p>
-          <span class="price">1 consulta</span>
-        </article>
-        <article class="svc">
-          <span class="tag tag-arcana">Con Arcana</span>
-          <span class="ico" aria-hidden="true">☾</span><h3>Registros akáshicos</h3>
-          <p>Abre la memoria de tu alma para entender los patrones que se repiten en tu vida y encontrar respuestas profundas.</p>
-          <span class="price">1 consulta</span>
-        </article>
+      <h2>¿Qué quieres <em class="oro">descubrir</em> hoy?</h2>
+      <p class="lead">Toca un camino y empieza en segundos.</p>
+      <div class="srvs">
+        <a class="srv" href="/arcana.html">
+          <img src="/cartas/m10.webp" alt="" loading="lazy">
+          <span class="srv-tag">Con Arcana</span>
+          <span class="srv-txt"><b>Lectura de tarot</b><span>¿Qué te depara el amor, el trabajo o el dinero?</span><em>Tirar mis cartas →</em></span>
+        </a>
+        <a class="srv" href="/arcana.html">
+          <img src="/cartas/m19.webp" alt="" loading="lazy">
+          <span class="srv-tag">Con Arcana</span>
+          <span class="srv-txt"><b>Carta astral</b><span>Descubre quién eres según tus estrellas.</span><em>Ver mi carta →</em></span>
+        </a>
+        <a class="srv" href="/arcana.html">
+          <img src="/cartas/m21.webp" alt="" loading="lazy">
+          <span class="srv-tag">Con Arcana</span>
+          <span class="srv-txt"><b>Lectura híbrida</b><span>Tus astros y el tarot en una sola respuesta.</span><em>Quiero la híbrida →</em></span>
+        </a>
+        <a class="srv" href="/arcana.html">
+          <img src="/cartas/m01.webp" alt="" loading="lazy">
+          <span class="srv-tag">Con Arcana</span>
+          <span class="srv-txt"><b>Ritual personalizado</b><span>Atrae amor, abundancia o protección.</span><em>Crear mi ritual →</em></span>
+        </a>
+        <a class="srv" href="/arcana.html">
+          <img src="/cartas/m02.webp" alt="" loading="lazy">
+          <span class="srv-tag">Con Arcana</span>
+          <span class="srv-txt"><b>Registros akáshicos</b><span>Lo que tu alma vino a aprender.</span><em>Abrir mis registros →</em></span>
+        </a>
+        <a class="srv diana" href="#agenda">
+          <img src="/cartas/m14.webp" alt="" loading="lazy">
+          <span class="srv-tag">Con Diana</span>
+          <span class="srv-txt"><b>Limpieza energética</b><span>Suelta las cargas. Vuelve a tu centro.</span><em>Agendar con Diana →</em></span>
+        </a>
       </div>
+      <p class="desliza" aria-hidden="true">← Desliza para ver más →</p>
     </div>
   </section>
 
