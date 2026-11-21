@@ -200,6 +200,12 @@ textarea,button{font:inherit}
 .plan li::before{content:counter(paso);width:30px;height:30px;border-radius:50%;border:1px solid var(--candle);color:var(--candle);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
 .plan b{display:block;font-weight:700}
 .plan span{color:var(--mist);font-size:14px}
+.plan li.tocable{cursor:pointer;border-radius:12px;padding:6px;margin:-6px;transition:background .2s}
+.plan li.tocable:hover,.plan li.tocable:focus-visible{background:rgba(217,180,106,.1);outline:none}
+.plan li.tocable div::after{content:"Toca para ir aquí ›";display:block;color:var(--candle);font-size:12px;margin-top:2px}
+.plan .empezar{justify-content:center;font-size:16px}
+.plan.usado .empezar,.plan.usado .empezar+.sub{display:none}
+.plan.usado li.tocable div::after{content:none}
 .baraja{flex:none;align-self:stretch;border:1px solid var(--candle);border-radius:16px;position:relative;overflow:hidden;isolation:isolate;box-shadow:inset 0 0 0 5px #3a0f2a,inset 0 0 0 6px rgba(217,180,106,.7),inset 0 0 60px rgba(0,0,0,.6),0 10px 30px rgba(0,0,0,.45);background:url(/mantel.svg) center 58%/290px no-repeat,radial-gradient(ellipse at 50% 40%,#5a1a45 0%,#3d1033 45%,#22091d 100%);padding:20px 0 18px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
 .baraja h3{margin:0;font-family:var(--display);font-size:24px;font-weight:600;padding-inline:16px;color:#f3d99a;text-shadow:0 2px 8px rgba(0,0,0,.6)}
 .baraja::before,.baraja::after{content:"✦ ☾ ✦ ☉ ✦ ☽ ✦";position:absolute;left:0;right:0;text-align:center;color:rgba(217,180,106,.55);font-size:11px;letter-spacing:6px;z-index:-1}
@@ -1093,8 +1099,21 @@ function mostrarPlan(pl) {
   const t = document.createElement("h3"); t.textContent = "Así será tu lectura";
   const sub = document.createElement("p"); sub.className = "sub"; sub.textContent = pl.nombre + (pl.mazoPropio ? " · con tu mazo" : " · tirada virtual") + ". Vamos paso a paso: no saques las cartas todavía.";
   const ol = document.createElement("ol");
-  for (const p of pl.pasos) { const li = document.createElement("li"); const d = document.createElement("div"); const b = document.createElement("b"); b.textContent = p.titulo; const s = document.createElement("span"); s.textContent = p.detalle; d.append(b, s); li.appendChild(d); ol.appendChild(li); }
-  box.append(t, sub, ol);
+  // Cada paso (menos la lectura) se puede tocar para ir directo a él; abajo, un botón claro para empezar.
+  const usar = (texto, visible) => { if (busy) return; box.classList.add("usado"); send({ texto, visible }); };
+  pl.pasos.forEach((p, i) => {
+    const li = document.createElement("li"); const d = document.createElement("div"); const b = document.createElement("b"); b.textContent = p.titulo; const s = document.createElement("span"); s.textContent = p.detalle; d.append(b, s); li.appendChild(d);
+    if (i < pl.pasos.length - 1) {
+      li.className = "tocable"; li.tabIndex = 0; li.setAttribute("role", "button"); li.setAttribute("aria-label", `Ir directo al paso ${i + 1}: ${p.titulo}`);
+      const ir = () => usar(`Quiero ir directo al Paso ${i + 1}: ${p.titulo}.`, `✦ Ir directo al paso ${i + 1}: ${p.titulo}`);
+      li.onclick = ir; li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(); } };
+    }
+    ol.appendChild(li);
+  });
+  const empezar = document.createElement("button"); empezar.type = "button"; empezar.className = "btn empezar"; empezar.textContent = "✦ Estoy lista, empezar";
+  empezar.onclick = () => usar("Estoy lista, empecemos con el Paso 1.", "✦ Estoy lista, empecemos");
+  const nota = document.createElement("p"); nota.className = "sub"; nota.textContent = "O toca el paso al que quieras ir directo.";
+  box.append(t, sub, ol, empezar, nota);
   log.appendChild(box); log.scrollTop = log.scrollHeight;
 }
 function mostrarDiagrama(d) {

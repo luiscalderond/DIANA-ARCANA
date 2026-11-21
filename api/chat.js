@@ -315,7 +315,8 @@ export default async function handler(req, res) {
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
     // Garantía: con mazo propio, en el paso de colocar las cartas el diagrama siempre aparece, aunque Arcana olvide pedirlo.
-    if (!dibujo && /paso\s*3|coloca/i.test(text)) {
+    const pidioColocar = typeof ultimo.content === "string" && /directo al Paso \d+: Coloca las cartas/.test(ultimo.content);
+    if (!dibujo && (/paso\s*3|coloca/i.test(text) || pidioColocar)) {
       const textos = [...mensajes.map((m) => (typeof m.content === "string" ? m.content : "")), memo];
       let tipo = null, yaDibujado = false;
       for (let i = textos.length - 1; i >= 0 && !tipo; i--) {
