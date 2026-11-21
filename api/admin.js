@@ -2,6 +2,7 @@
 import { timingSafeEqual } from "node:crypto";
 import * as db from "../lib/db.js";
 import { leerCuerpo, PLANES, planDeReferencia, premiarReferida } from "../lib/acceso.js";
+import * as cu from "../lib/cuentas.js";
 
 function autorizado(req) {
   const esperada = process.env.ADMIN_CLAVE || "";
@@ -30,18 +31,33 @@ export default async function handler(req, res) {
       try { return res.status(200).json({ opiniones: await db.listarOpiniones() }); }
       catch (e) { return res.status(200).json({ opiniones: [], aviso: "Falta crear la tabla de opiniones en Supabase (supabase/esquema.sql)." }); }
     }
+    if (req.method === "GET" && /[?&]ver=cuentas/.test(req.url || "")) {
+      try { return res.status(200).json({ cuentas: (await cu.listarCuentas()).map((c) => ({ ...c, clave: cu.claveDeCuenta(c.id) })) }); }
+      catch (e) { return res.status(200).json({ cuentas: [], aviso: "Falta crear las tablas de cuentas en Supabase (cuentas.sql)." }); }
+    }
     if (req.method === "GET") return res.status(200).json({ suscriptoras: await db.listarSuscriptoras() });
     if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
     const b = leerCuerpo(req);
     // Modo prueba: deja libre el teléfono de Diana por un año, sin pasar por el pago.
+    // Cambiar la contraseña de una clienta que la olvidó (se le cierran las sesiones abiertas).
+    if (b.accion === "clave") {
+      const clave = String(b.clave || "");
+      if (clave.length < 6) return res.status(400).json({ error: "La contraseña nueva debe tener al menos 6 caracteres." });
+      if (!/^[0-9a-f-]{36}$/i.test(String(b.cuentaId || ""))) return res.status(400).json({ error: "Cuenta no válida." });
+      await cu.cambiarClave(b.cuentaId, clave);
+      return res.status(200).json({ ok: true, aviso: "Listo. Envíale la contraseña nueva por WhatsApp; puede cambiarla luego con «¿Olvidaste tu contraseña?»." });
+    }
     if (b.accion === "probar") {
-      const dispositivo = String(b.dispositivo || "");
-      if (!/^[A-Za-z0-9-]{8,64}$/.test(dispositivo)) return res.status(400).json({ error: "Abre primero el chat de Arcana en este teléfono y vuelve aquí." });
+      // Modo prueba para la cuenta con la que Diana entró en el chat de este teléfono.
+      const suya = await cu.cuentaDeToken(String(b.token || "")).catch(() => null);
+      const dispositivo = suya ? cu.claveDeCuenta(suya.id) : String(b.dispositivo || "");
+      if (!suya && !b.dispositivo) return res.status(400).json({ error: "Abre primero el chat de Arcana en este teléfono, entra con tu cuenta y vuelve aquí." });
+      if (!/^[A-Za-z0-9-]{8,64}$/.test(dispositivo)) return res.status(400).json({ error: "Abre primero el chat de Arcana en este teléfono, entra con tu cuenta y vuelve aquí." });
       const ya = (await db.suscripcionesActivasDe(dispositivo)).find((x) => String(x.referencia).startsWith("DP-"));
-      if (ya) return res.status(200).json({ ok: true, aviso: "Este teléfono ya está en modo prueba." });
+      if (ya) return res.status(200).json({ ok: true, aviso: suya ? `La cuenta ${suya.email} ya está en modo prueba.` : "Este teléfono ya está en modo prueba." });
       const nueva = await db.crearSolicitud({ nombre: "Diana (pruebas)", telefono: "-", email: "-", dispositivo, referencia: "DP-" + dispositivo.slice(0, 6).toUpperCase() });
       await db.actualizarSuscriptora(nueva.id, { estado: "activa", activa_hasta: new Date(Date.now() + 365 * 864e5).toISOString() });
-      return res.status(200).json({ ok: true, aviso: "Listo: este teléfono quedó en modo prueba por un año, con tiradas sin límite." });
+      return res.status(200).json({ ok: true, aviso: suya ? `Listo: tu cuenta ${suya.email} quedó en modo prueba por un año, con tiradas sin límite, en cualquier equipo.` : "Listo: este teléfono quedó en modo prueba por un año, con tiradas sin límite." });
     }
     const s = await db.obtenerSuscriptora(String(b.id || ""));
     if (!s) return res.status(404).json({ error: "No existe esa suscriptora." });

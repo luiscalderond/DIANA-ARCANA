@@ -58,3 +58,33 @@ create index if not exists arcana_conversaciones_actualizada_idx on public.arcan
 alter table public.arcana_conversaciones enable row level security;
 grant all on public.arcana_conversaciones to service_role;
 alter table public.arcana_conversaciones add column if not exists cliente text;
+
+-- ===== Cuentas de clientas =====
+create table if not exists arcana_cuentas (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  email text not null unique,
+  telefono text,
+  clave text not null,
+  datos jsonb not null default '{}'::jsonb,
+  dispositivo_alta text,
+  recuperar_codigo text,
+  recuperar_expira timestamptz,
+  recuperar_intentos int not null default 0,
+  creada timestamptz not null default now(),
+  ultimo_ingreso timestamptz
+);
+create index if not exists arcana_cuentas_dispositivo on arcana_cuentas (dispositivo_alta);
+
+create table if not exists arcana_sesiones (
+  token text primary key,
+  cuenta_id uuid not null references arcana_cuentas(id) on delete cascade,
+  creada timestamptz not null default now(),
+  expira timestamptz not null
+);
+create index if not exists arcana_sesiones_cuenta on arcana_sesiones (cuenta_id);
+
+-- Solo el servidor (clave de servicio) puede leer o escribir estas tablas.
+alter table arcana_cuentas enable row level security;
+alter table arcana_sesiones enable row level security;
+grant all on arcana_cuentas, arcana_sesiones to service_role;

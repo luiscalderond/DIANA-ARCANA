@@ -269,6 +269,14 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 .paywall .plan-op b{font-size:16px}
 .paywall .plan-op small{color:var(--mist);font-size:13px}
 .paywall .err{color:var(--rose);font-size:14px}
+.paywall input[type=password],.paywall input[inputmode=numeric]{background:var(--night);color:var(--ink);border:1px solid var(--veil);border-radius:10px;padding:11px 12px;font:16px var(--body)}
+.acceso .pestanas{display:flex;gap:6px;background:var(--night);border-radius:999px;padding:4px}
+.acceso .pestanas button{flex:1;border:0;background:none;color:var(--mist);border-radius:999px;padding:9px 10px;font:600 14px var(--body);cursor:pointer}
+.acceso .pestanas button[aria-selected=true]{background:rgba(217,180,106,.18);color:#f6e7bf}
+.acceso .ver-clave{position:relative}
+.acceso .ver-clave input{width:100%;box-sizing:border-box;padding-right:64px}
+.acceso .ver-clave button{position:absolute;right:6px;bottom:7px;border:0;background:none;color:var(--candle);font:13px var(--body);cursor:pointer;padding:4px 6px}
+.acceso .ok{color:#bfe3c4;font-size:14px}
 .btn.wa{background:#25d366;border-color:#25d366;color:#0b2a17;text-decoration:none;justify-content:center}
 
 @media (prefers-reduced-motion:no-preference){.msg.thinking{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{opacity:.5}}}
@@ -329,6 +337,7 @@ try {
   perfil = usuarios.find((u) => u.id === act) || (usuarios.length === 1 ? usuarios[0] : null);
 } catch { usuarios = []; }
 function guardarUsuarios() {
+  if (cuenta) return; // con cuenta, los datos viven en el servidor
   try { localStorage.setItem("arcana-usuarios", JSON.stringify(usuarios)); perfil ? localStorage.setItem("arcana-usuaria-actual", perfil.id) : localStorage.removeItem("arcana-usuaria-actual"); } catch {}
 }
 const primerNombre = (p) => p.nombre.split(/\s+/)[0];
@@ -354,10 +363,11 @@ function recordarLectura(texto) {
   const gancho = (lineas.find((l) => /^🔮/.test(l)) || "").replace(/^🔮\s*/, "");
   const r = { f: new Date().toISOString().slice(0, 10), t: lectura.nombre || "tirada", c: lectura.cartas ? lectura.cartas.map((c) => c.carta + (c.invertida ? " (inv.)" : "")).join(", ") : "con su propio mazo", x: (revel.slice(0, 200) + (gancho ? " | Quedó abierto: " + gancho.slice(0, 160) : "")).trim() };
   perfil.lecturas = [r, ...(perfil.lecturas || [])].slice(0, 8);
+  if (cuenta) fetch("/api/cuenta", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ accion: "lectura", lectura: r }) }).then((x) => x.json()).then((j) => { if (j.cuenta) ponerCuenta(j.cuenta); }).catch(() => {});
   guardarUsuarios();
 }
 function perfilParaEnviar() {
-  if (!perfil) return undefined;
+  if (!perfil || cuenta) return undefined;
   const { nombre, fecha, ciudad, otros, lecturas } = perfil;
   return { nombre, fecha, ciudad, otros, lecturas: (lecturas || []).slice(0, 5) };
 }
@@ -407,13 +417,127 @@ let dispositivo;
 try { dispositivo = localStorage.getItem("arcana-dispositivo"); if (!dispositivo) { dispositivo = nuevoId(); localStorage.setItem("arcana-dispositivo", dispositivo); } } catch { dispositivo = nuevoId(); }
 let consulta = nuevoId();
 // Referidas: código propio (para el QR del PDF) y código de quien la invitó (llega como ?ref=XXXXXX).
-const miCodigo = String(dispositivo).replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
+let miCodigo = String(dispositivo).replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
 let refDe = "";
 try {
   const r = (new URLSearchParams(location.search).get("ref") || "").toUpperCase();
   if (/^[A-Z0-9]{6}$/.test(r) && r !== miCodigo && !localStorage.getItem("arcana-ref")) localStorage.setItem("arcana-ref", r);
   refDe = localStorage.getItem("arcana-ref") || "";
 } catch {}
+/* ---------- Cuenta de la clienta: entra con email y contraseña desde cualquier equipo ---------- */
+// cuentasActivas = false solo si el servidor aún no tiene base de datos (pruebas locales): entonces se usa el modo anterior por equipo.
+const legado = dispositivo;
+let token = "", cuenta = null, cuentasActivas = true;
+try { token = localStorage.getItem("arcana-token") || ""; } catch {}
+const yaTuvoCuenta = () => { try { return Boolean(localStorage.getItem("arcana-ya-tuvo-cuenta")); } catch { return false; } };
+const conSesion = (h) => (token ? { ...(h || {}), Authorization: "Bearer " + token } : h || {});
+function ponerCuenta(c) {
+  cuenta = c; dispositivo = c.clave;
+  miCodigo = String(dispositivo).replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
+  const d = c.datos || {};
+  perfil = { id: c.id, nombre: c.nombre, fecha: d.fecha, ciudad: d.ciudad, otros: d.otros || [], lecturas: d.lecturas || [] };
+}
+function guardarToken(t) { token = t || ""; try { t ? localStorage.setItem("arcana-token", t) : localStorage.removeItem("arcana-token"); } catch {} }
+const revisandoCuenta = (async () => {
+  try {
+    const r = await fetch("/api/cuenta", { headers: conSesion() });
+    if (r.status === 503 || r.status === 404) { cuentasActivas = false; return; }
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.cuenta) ponerCuenta(j.cuenta); else if (r.status === 401) guardarToken("");
+  } catch {}
+})();
+async function cerrarSesion() {
+  fetch("/api/cuenta", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ accion: "salir" }) }).catch(() => {});
+  guardarToken(""); cuenta = null; perfil = null; dispositivo = legado;
+  reiniciarChat(); begin(false);
+}
+const campo = (texto, attrs) => el("label", {}, texto, el("input", attrs));
+function campoClave(nombre, auto) {
+  const i = el("input", { type: "password", name: nombre, required: "", minlength: "6", autocomplete: auto });
+  const v = el("button", { type: "button", text: "Ver" });
+  v.onclick = () => { i.type = i.type === "password" ? "text" : "password"; v.textContent = i.type === "password" ? "Ver" : "Ocultar"; };
+  return el("label", {}, "Contraseña", el("span", { class: "ver-clave" }, i, v));
+}
+async function pedirCuenta(datos) {
+  const r = await fetch("/api/cuenta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ legado, ...datos }) }).catch(() => null);
+  return { r, j: r ? await r.json().catch(() => ({})) : {} };
+}
+// Tarjeta para crear la cuenta (4 datos) o entrar. alEntrar se llama con la sesión ya abierta.
+function mostrarIngreso(alEntrar, modo) {
+  log.querySelectorAll(".acceso").forEach((x) => x.remove());
+  const card = el("div", { class: "paywall acceso", role: "region", "aria-label": "Tu cuenta" });
+  const listo = (j) => { guardarToken(j.token); ponerCuenta(j.cuenta); card.remove(); alEntrar(); };
+  const pestanas = (activa) => {
+    const t = el("div", { class: "pestanas", role: "tablist" });
+    [["crear", "Soy nueva"], ["entrar", "Ya tengo cuenta"]].forEach(([m, txt]) => {
+      const b = el("button", { type: "button", role: "tab", "aria-selected": String(m === activa), text: txt });
+      b.onclick = () => pintar(m); t.append(b);
+    });
+    return t;
+  };
+  function pintar(m) {
+    const err = el("p", { class: "err", "aria-live": "polite" });
+    const enviar = (f, texto, fn) => {
+      const boton = el("button", { class: "btn", type: "submit", text: texto });
+      f.append(err, boton);
+      f.onsubmit = async (e) => { e.preventDefault(); err.textContent = ""; boton.disabled = true; await fn(new FormData(f)).catch(() => { err.textContent = "No hay conexión. Intenta de nuevo."; }); boton.disabled = false; };
+    };
+    if (m === "crear") {
+      const anterior = usuarios[0] || {}; // datos que ya dejó en este equipo antes de las cuentas
+      const f = el("form", {},
+        campo("Tus nombres y apellidos", { type: "text", name: "nombre", required: "", autocomplete: "name", value: anterior.nombre || "" }),
+        campo("WhatsApp", { type: "tel", name: "telefono", required: "", autocomplete: "tel", placeholder: "0991234567" }),
+        campo("Email", { type: "email", name: "email", required: "", autocomplete: "email" }),
+        campoClave("clave", "new-password"),
+        el("label", { class: "check" }, el("input", { type: "checkbox", name: "acepto", required: "", checked: "" }), "Acepto que Diana guarde mis datos y mis lecturas de forma privada."));
+      enviar(f, "✦ Empezar mi consulta", async (fd) => {
+        const { r, j } = await pedirCuenta({ accion: "registrar", nombre: fd.get("nombre"), telefono: fd.get("telefono"), email: fd.get("email"), clave: fd.get("clave"), acepto: fd.get("acepto") === "on", fecha: anterior.fecha, ciudad: anterior.ciudad });
+        if (r && r.ok) return listo(j);
+        err.textContent = j.error || "No hay conexión. Intenta de nuevo.";
+        if (r && r.status === 409) setTimeout(() => pintar("entrar"), 1800);
+      });
+      card.replaceChildren(el("h2", { text: "Crea tu cuenta" }), el("p", { text: "Así tus lecturas y tus consultas te esperan en cualquier celular o computadora." }), pestanas("crear"), f);
+    } else if (m === "entrar") {
+      const f = el("form", {}, campo("Email", { type: "email", name: "email", required: "", autocomplete: "email" }), campoClave("clave", "current-password"));
+      enviar(f, "Entrar", async (fd) => {
+        const { r, j } = await pedirCuenta({ accion: "ingresar", email: fd.get("email"), clave: fd.get("clave") });
+        if (r && r.ok) return listo(j);
+        err.textContent = j.error || "No hay conexión. Intenta de nuevo.";
+      });
+      const olvido = el("button", { class: "linkbtn", type: "button", text: "¿Olvidaste tu contraseña?" });
+      olvido.onclick = () => pintar("olvido");
+      card.replaceChildren(el("h2", { text: "Qué bueno verte de nuevo" }), pestanas("entrar"), f, olvido);
+    } else if (m === "olvido") {
+      const f = el("form", {}, campo("El email de tu cuenta", { type: "email", name: "email", required: "", autocomplete: "email" }));
+      enviar(f, "Enviarme un código", async (fd) => {
+        const email = fd.get("email");
+        const { r, j } = await pedirCuenta({ accion: "recuperar", email });
+        if (r && r.ok) return pintarCodigo(email);
+        if (j.whatsapp) { err.textContent = ""; const n = typeof j.whatsapp === "string" ? j.whatsapp : ""; f.replaceChildren(...[el("p", { text: j.error }), n ? el("a", { class: "btn wa", href: `https://wa.me/${n}?text=${encodeURIComponent("Hola Diana, olvidé la contraseña de mi cuenta de Arcana. Mi email es " + email)}`, target: "_blank", rel: "noopener", text: "Escribir a Diana por WhatsApp" }) : null].filter(Boolean)); return; }
+        err.textContent = j.error || "No hay conexión. Intenta de nuevo.";
+      });
+      const volver = el("button", { class: "linkbtn", type: "button", text: "Volver" }); volver.onclick = () => pintar("entrar");
+      card.replaceChildren(el("h2", { text: "Recupera tu cuenta" }), el("p", { text: "Te enviaremos un código de 6 números a tu email." }), f, volver);
+    }
+    function pintarCodigo(email) {
+      const err2 = err;
+      const f = el("form", {}, campo("Código de 6 números", { type: "text", inputmode: "numeric", name: "codigo", required: "", autocomplete: "one-time-code", maxlength: "6", pattern: "[0-9 ]{6,7}" }), campoClave("clave", "new-password"));
+      f.querySelector('input[name=clave]').closest("label").firstChild.textContent = "Contraseña nueva";
+      enviar(f, "Guardar y entrar", async (fd) => {
+        const { r, j } = await pedirCuenta({ accion: "restablecer", email, codigo: fd.get("codigo"), clave: fd.get("clave") });
+        if (r && r.ok) return listo(j);
+        err2.textContent = j.error || "No hay conexión. Intenta de nuevo.";
+      });
+      const otra = el("button", { class: "linkbtn", type: "button", text: "No me llegó: enviarlo otra vez" }); otra.onclick = () => pintar("olvido");
+      card.replaceChildren(el("h2", { text: "Revisa tu email" }), el("p", { class: "ok", text: `Si ${email} tiene cuenta, ya te llegó el código (mira también en spam).` }), f, otra);
+    }
+  }
+  pintar(modo || "crear");
+  log.appendChild(card); log.scrollTop = log.scrollHeight;
+  const primero = card.querySelector("input"); if (primero && matchMedia("(pointer:fine)").matches) primero.focus();
+  return card;
+}
+
 let busy = false, started = false, voiceOn = true, pendingImage = null;
 let lectura = null, nombreTirada = "";   // lectura actual para el PDF: { nombre, cartas, foto, textos }
 
@@ -970,7 +1094,7 @@ function mostrarOpinion(despuesDe) {
     e.preventDefault(); if (!valor) return;
     env.disabled = true; env.textContent = "Enviando…"; err.textContent = "";
     try {
-      const r = await fetch("/api/opinar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dispositivo, estrellas: valor, comentario: ta.value, tirada: lectura && lectura.nombre, cartas: lectura && lectura.cartas ? lectura.cartas.map((c) => c.carta).join(", ") : "" }) });
+      const r = await fetch("/api/opinar", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ dispositivo, estrellas: valor, comentario: ta.value, tirada: lectura && lectura.nombre, cartas: lectura && lectura.cartas ? lectura.cartas.map((c) => c.carta).join(", ") : "" }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "No pudimos enviar tu opinión.");
       box.replaceChildren(); const g = document.createElement("h3"); g.textContent = "✦ ¡Gracias por tu opinión! ✦"; const gp = document.createElement("p"); gp.textContent = "Diana la leerá con cariño."; box.append(g, gp); box.classList.add("hecha");
@@ -1085,9 +1209,18 @@ function ampliarCarta(c) {
 function begin(conVoz) {
   if (window.Musica) Musica.iniciar();
   if (started) return;
+  if (!begin.revisada) { revisandoCuenta.then(() => { begin.revisada = true; begin(conVoz); }); return; }
   started = true;
+  // Sin sesión: primero crea su cuenta o entra (una sola tarjeta).
+  if (cuentasActivas && !cuenta) {
+    const bienvenida = "Te doy la bienvenida a este espacio sagrado. Soy Arcana, la asistente virtual de Diana. Antes de abrir las cartas, crea tu cuenta: así tus lecturas te esperan en cualquier equipo.";
+    addMsg("a", bienvenida); if (conVoz) hablar(bienvenida);
+    mostrarIngreso(() => { reiniciarChat(); begin(conVoz); }, yaTuvoCuenta() ? "entrar" : "crear");
+    pintarFaq(); return;
+  }
+  if (cuenta) { try { localStorage.setItem("arcana-ya-tuvo-cuenta", "1"); } catch {} }
   // Dos o más usuarias en este equipo: primero elige quién consulta.
-  if (usuarios.length >= 2 && !begin.elegida) {
+  if (!cuenta && usuarios.length >= 2 && !begin.elegida) {
     const d = addMsg("a elegir", "Te doy la bienvenida a este espacio sagrado. ¿Quién consulta hoy?");
     const lista = document.createElement("div"); lista.className = "usuarias";
     for (const u of usuarios) {
@@ -1103,9 +1236,14 @@ function begin(conVoz) {
     pintarFaq(); return;
   }
   begin.elegida = false;
-  const saludo = perfil && perfil.nombre ? saludoDe(perfil) : SALUDO;
+  const saludo = cuenta ? cuenta.saludo : perfil && perfil.nombre ? saludoDe(perfil) : SALUDO;
   const d = addMsg("a", saludo); addReplay(d, saludo);
-  if (perfil && perfil.nombre) {
+  if (cuenta) {
+    const opciones = document.createElement("div"); opciones.className = "opciones-usuaria";
+    const no = document.createElement("button"); no.type = "button"; no.className = "linkbtn";
+    no.textContent = `¿No eres ${cuenta.nombre.split(/\s+/)[0]}? Cerrar sesión`;
+    no.onclick = cerrarSesion; opciones.append(no); d.appendChild(opciones);
+  } else if (perfil && perfil.nombre) {
     const opciones = document.createElement("div"); opciones.className = "opciones-usuaria";
     const no = document.createElement("button"); no.type = "button"; no.className = "linkbtn";
     no.textContent = `¿No eres ${primerNombre(perfil)}? Entrar como otra persona`;
@@ -1148,18 +1286,19 @@ async function send(auto) {
   const bubble = addMsg("a thinking", img ? "Arcana está mirando tus cartas…" : "Arcana está pensando…");
   try {
     const r = await fetch("/api/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: conSesion({ "Content-Type": "application/json" }),
       body: JSON.stringify({ dispositivo, consulta, perfil: perfilParaEnviar(), ref: refDe || undefined, messages: historial.slice(-38), image: img ? { media_type: img.media_type, data: img.data } : undefined }),
     });
     const j = await r.json().catch(() => ({}));
     bubble.classList.remove("thinking");
     if (r.status === 402 && j.suscripcion) { vistos.length = marcaVistos; bubble.remove(); msgU.remove(); historial.pop(); if (!auto) { box.value = text; autosize(); } if (img) { pendingImage = img; $("previewImg").src = img.url; $("preview").hidden = false; } mostrarSuscripcion(j); return; }
+    if (r.status === 401 && j.login) { vistos.length = marcaVistos; bubble.remove(); msgU.remove(); historial.pop(); if (!auto) { box.value = text; autosize(); } guardarToken(""); cuenta = null; mostrarIngreso(() => { addMsg("a", "✦ Listo, ya estás dentro. Envía tu mensaje para continuar."); box.focus(); }, "entrar"); return; }
     if (!r.ok) { vistos.length = marcaVistos; bubble.textContent = (j.error || "Algo interrumpió la conexión. Vuelve a enviar tu mensaje.") + " (código " + r.status + ")"; historial.pop(); return; }
     if (j.baraja) { bubble.remove(); log.appendChild(bubble); }
     if (j.plan) { bubble.remove(); mostrarPlan(j.plan); log.appendChild(bubble); }
     if (j.diagrama) { bubble.remove(); mostrarDiagrama(j.diagrama); log.appendChild(bubble); }
     pintarTexto(bubble, j.text);
-    if (j.perfil) guardarPerfil(j.perfil);
+    if (j.miCuenta) ponerCuenta(j.miCuenta); else if (j.perfil && !cuenta) guardarPerfil(j.perfil);
     if (lectura && lectura.cartas && !j.baraja) setTimeout(revelarPendientes, 8000); // tiempo para que ella misma las voltee
     // La nota interna (cartas sacadas, carta astral) viaja en el historial pero no se muestra.
     // La imagen solo viaja una vez: en el historial queda una nota para que Arcana no crea que no llegó.
@@ -1260,18 +1399,20 @@ function mostrarSuscripcion(datos, cardExistente) {
     f.onsubmit = async (e) => {
       e.preventDefault(); err.textContent = "";
       const fd = new FormData(f), boton = f.querySelector("button"); boton.disabled = true;
-      const r = await fetch("/api/suscribir", { method: "POST", headers: { "Content-Type": "application/json" },
+      const r = await fetch("/api/suscribir", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }),
         body: JSON.stringify({ dispositivo, nombre: fd.get("nombre"), telefono: fd.get("telefono"), email: fd.get("email"), plan: fd.get("plan"), acepto: fd.get("acepto") === "on" }) }).catch(() => null);
       const j = r ? await r.json().catch(() => ({})) : {};
       boton.disabled = false;
       if (!r || !r.ok) { err.textContent = j.error || "No hay conexión. Intenta de nuevo."; return; }
-      pantallaDeposito(card, j, j.referencia, fd.get("nombre"));
+      pantallaDeposito(card, j, j.referencia, fd.get("nombre") || (cuenta && cuenta.nombre));
     };
+    // Con cuenta ya tenemos nombre, WhatsApp y email: solo elige el plan.
+    if (cuenta) f.querySelectorAll('input[name=nombre],input[name=telefono],input[name=email],input[name=acepto]').forEach((i) => i.closest("label").remove());
     const ya = el("button", { class: "linkbtn", type: "button", text: "Ya soy suscriptora" });
     ya.onclick = () => formularioAcceso(card, datos);
     card.replaceChildren(
       el("h2", { text: datos.agotado ? "Tu plan ya se completó" : "Tus consultas gratis ya se usaron" }),
-      el("p", { text: datos.agotado ? "Usaste todas las tiradas de tu plan. Renueva para seguir consultando con Arcana: tarot, carta astral, rituales y registros akáshicos." : "Sigue consultando con Arcana: tarot, carta astral, rituales y registros akáshicos." }), f, ya);
+      el("p", { text: datos.agotado ? "Usaste todas las tiradas de tu plan. Renueva para seguir consultando con Arcana: tarot, carta astral, rituales y registros akáshicos." : "Sigue consultando con Arcana: tarot, carta astral, rituales y registros akáshicos." }), f, ...(cuenta ? [] : [ya]));
   }
   if (!cardExistente) { log.querySelectorAll(".paywall").forEach((x) => x.remove()); log.appendChild(card); log.scrollTop = log.scrollHeight; }
 }

@@ -42,11 +42,15 @@ a{color:var(--candle)}
     </div>
     <div class="card" style="margin-bottom:14px">
       <b>Modo prueba</b>
-      <p>Deja este teléfono o computadora libre para probar Arcana sin suscribirte. Abre primero el chat en este mismo navegador.</p>
-      <div class="fila"><button type="button" id="probar">Activar este equipo para pruebas</button></div>
+      <p>Deja tu cuenta libre para probar Arcana sin suscribirte, en cualquier equipo. Primero entra al chat con tu cuenta en este mismo navegador.</p>
+      <div class="fila"><button type="button" id="probar">Activar mi cuenta para pruebas</button></div>
     </div>
     <p id="resumen" style="margin-bottom:12px"></p>
     <div id="lista" style="display:grid;gap:10px"></div>
+    <h1 style="margin-top:28px">Cuentas de clientas</h1>
+    <p id="ctResumen" style="margin:6px 0 12px"></p>
+    <input id="ctBuscar" placeholder="Buscar nombre, email o teléfono" style="margin-bottom:10px;width:100%">
+    <div id="ctLista" style="display:grid;gap:10px"></div>
     <h1 style="margin-top:28px">Conversaciones</h1>
     <p id="cvResumen" style="margin:6px 0 12px"></p>
     <input id="cvBuscar" placeholder="Buscar clienta o palabra en las conversaciones" style="margin-bottom:10px;width:100%">
@@ -97,7 +101,7 @@ function pintar() {
 }
 async function cargar() {
   $("err").textContent = "";
-  try { datos = (await api("GET")).suscriptoras || []; $("login").hidden = true; $("panel").hidden = false; pintar(); cargarConversaciones(); cargarOpiniones(); }
+  try { datos = (await api("GET")).suscriptoras || []; $("login").hidden = true; $("panel").hidden = false; pintar(); cargarCuentas(); cargarConversaciones(); cargarOpiniones(); }
   catch (e) { $("err").textContent = e.message; if (/Clave/.test(e.message)) { $("login").hidden = false; $("panel").hidden = true; } }
 }
 async function cargarOpiniones() {
@@ -117,6 +121,38 @@ async function cargarOpiniones() {
     }));
   } catch { $("opResumen").textContent = "No se pudieron cargar las opiniones."; }
 }
+let cuentas = [];
+function pintarCuentas() {
+  const q = $("ctBuscar").value.trim().toLowerCase();
+  const filas = cuentas.filter((c) => !q || [c.nombre, c.email, c.telefono].join(" ").toLowerCase().includes(q)).slice(0, 100);
+  const semana = cuentas.filter((c) => c.ultimo_ingreso && Date.now() - new Date(c.ultimo_ingreso) < 7 * 864e5).length;
+  $("ctResumen").textContent = cuentas.length ? `${cuentas.length} cuentas · ${semana} entraron esta semana.` : "Todavía no hay cuentas.";
+  $("ctLista").replaceChildren(...filas.map((c) => {
+    const d = document.createElement("div"); d.className = "card";
+    const b = document.createElement("b"); b.textContent = c.nombre;
+    const dt = c.datos || {}, lec = (dt.lecturas || []).length;
+    const info = document.createElement("p");
+    info.textContent = `${c.email} · ${c.telefono || "-"} · ${dt.fecha ? "nació el " + dt.fecha + " en " + dt.ciudad + " · " : ""}${lec} lecturas · creada el ${fecha(c.creada)}${c.ultimo_ingreso ? " · último ingreso " + fecha(c.ultimo_ingreso) : ""}`;
+    const acc = document.createElement("div"); acc.className = "fila";
+    const cambiar = document.createElement("button"); cambiar.className = "sec"; cambiar.textContent = "Cambiar contraseña";
+    cambiar.onclick = () => {
+      const i = document.createElement("input"); i.placeholder = "Contraseña nueva (6 o más)"; i.autocomplete = "off";
+      const g = document.createElement("button"); g.textContent = "Guardar";
+      g.onclick = async () => { g.disabled = true; try { const j = await api("POST", { accion: "clave", cuentaId: c.id, clave: i.value }); $("err").style.color = "var(--ok)"; $("err").textContent = "✓ " + c.nombre + ": " + j.aviso; acc.replaceChildren(cambiar, w); } catch (e) { $("err").style.color = ""; $("err").textContent = e.message; g.disabled = false; } };
+      acc.replaceChildren(i, g, w); i.focus();
+    };
+    const w = document.createElement("a"); w.href = wa(c.telefono || ""); w.target = "_blank"; w.rel = "noopener"; w.textContent = "WhatsApp";
+    acc.append(cambiar, w); d.append(b, info, acc); return d;
+  }));
+}
+async function cargarCuentas() {
+  try {
+    const r = await fetch("/api/admin?ver=cuentas", { headers: { "x-admin-clave": clave } }); const j = await r.json();
+    if (j.aviso) { $("ctResumen").textContent = j.aviso; return; }
+    cuentas = j.cuentas || []; pintarCuentas();
+  } catch { $("ctResumen").textContent = "No se pudieron cargar las cuentas."; }
+}
+$("ctBuscar").oninput = () => pintarCuentas();
 let convs = [];
 function pintarConversaciones() {
   const q = $("cvBuscar").value.trim().toLowerCase();
@@ -154,9 +190,9 @@ async function accion(id, accion, boton) {
 }
 $("login").onsubmit = (e) => { e.preventDefault(); clave = $("clave").value; try { sessionStorage.setItem("arcana-admin", clave); } catch {} cargar(); };
 $("probar").onclick = async () => {
-  let disp = ""; try { disp = localStorage.getItem("arcana-dispositivo") || ""; } catch {}
+  let disp = "", token = ""; try { disp = localStorage.getItem("arcana-dispositivo") || ""; token = localStorage.getItem("arcana-token") || ""; } catch {}
   const b = $("probar"); b.disabled = true;
-  try { const j = await api("POST", { accion: "probar", dispositivo: disp }); await cargar(); $("err").style.color = "var(--ok)"; $("err").textContent = "✓ " + (j.aviso || "Listo."); }
+  try { const j = await api("POST", token ? { accion: "probar", token } : { accion: "probar", dispositivo: disp }); await cargar(); $("err").style.color = "var(--ok)"; $("err").textContent = "✓ " + (j.aviso || "Listo."); }
   catch (e) { $("err").style.color = ""; $("err").textContent = e.message; }
   b.disabled = false;
 };

@@ -2,6 +2,7 @@
 import { randomInt } from "node:crypto";
 import * as db from "../lib/db.js";
 import { idValido, leerCuerpo, datosDeposito, PLANES } from "../lib/acceso.js";
+import { cuentaDeToken, tokenDe, claveDeCuenta } from "../lib/cuentas.js";
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 
@@ -11,6 +12,9 @@ export default async function handler(req, res) {
   let b;
   try { b = leerCuerpo(req); } catch { return res.status(400).json({ error: "Datos no válidos." }); }
 
+  // Con cuenta, el plan queda en la cuenta y los datos ya los tenemos.
+  const cuenta = await cuentaDeToken(tokenDe(req)).catch(() => null);
+  if (cuenta) { b.dispositivo = claveDeCuenta(cuenta.id); b.nombre = b.nombre || cuenta.nombre; b.telefono = b.telefono || cuenta.telefono; b.email = b.email || cuenta.email; b.acepto = true; }
   const nombre = String(b.nombre || "").trim().slice(0, 120);
   const telefono = String(b.telefono || "").replace(/[^\d+]/g, "").slice(0, 20);
   const email = String(b.email || "").trim().toLowerCase().slice(0, 200);

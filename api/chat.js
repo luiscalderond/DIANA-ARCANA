@@ -9,6 +9,9 @@ import { buscarLugar, localAUtc, calcularCarta, resumenCarta } from "../lib/astr
 import { barajar, TIRADAS, diagrama, plan } from "../lib/mazo.js";
 import { usarConsulta, revisarMensaje, barajaSinCobro, idValido, datosDeposito } from "../lib/acceso.js";
 import { hayBaseDeDatos, guardarConversacion } from "../lib/db.js";
+import { cuentaDeToken, tokenDe, claveDeCuenta, guardarDatosCuenta } from "../lib/cuentas.js";
+import { perfilValido, perfilDeCuenta, saludoNuevo, datosConPerfil } from "../lib/perfil.js";
+import { publica } from "./cuenta.js";
 
 // Texto limpio para guardar: sin notas internas, sin fotos, con tope de tamaño.
 function textoParaGuardar(historial, respuesta) {
@@ -40,16 +43,6 @@ function permitir(ip) {
   return n <= LIMITE_DIARIO;
 }
 
-// Datos que la clienta dejó en una visita anterior (guardados en su equipo).
-function perfilValido(p) {
-  if (!p || typeof p !== "object") return null;
-  const limpio = (x, n) => String(x || "").replace(/[\[\]{}<>\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
-  const nombre = limpio(p.nombre, 80), fecha = limpio(p.fecha, 20), ciudad = limpio(p.ciudad, 60), relacion = limpio(p.relacion, 40);
-  if (nombre.length < 2 || ciudad.length < 2 || !buscarFecha(fecha)) return null;
-  const otros = Array.isArray(p.otros) ? p.otros.slice(0, 6).map((o) => perfilValido({ ...o, otros: null, lecturas: null })).filter(Boolean) : [];
-  const lecturas = Array.isArray(p.lecturas) ? p.lecturas.slice(0, 5).map((l) => ({ f: limpio(l && l.f, 10), t: limpio(l && l.t, 60), c: limpio(l && l.c, 200), x: limpio(l && l.x, 400) })).filter((l) => l.t) : [];
-  return { nombre, fecha, ciudad, ...(relacion ? { relacion } : {}), ...(otros.length ? { otros } : {}), ...(lecturas.length ? { lecturas } : {}) };
-}
 function notaLecturas(lecturas) {
   if (!lecturas || !lecturas.length) return "";
   return " Sus lecturas anteriores (de la más reciente a la más antigua): " + lecturas.map((l) => `${l.f}: ${l.t}, cartas ${l.c}. ${l.x}`).join(" // ") + ".";
@@ -58,7 +51,7 @@ function notaOtros(otros) {
   if (!otros || !otros.length) return "";
   return " Otras personas que ya consultó (datos guardados): " + otros.map((o) => { const f = buscarFecha(o.fecha); return `${o.nombre}${o.relacion ? ` (${o.relacion})` : ""}, nacida el ${o.fecha} en ${o.ciudad}, signo ${signoSolar(f)}, número de vida ${numeroDeVida(f)}`; }).join("; ") + ".";
 }
-function limpiarHistorial(mensajes, perfil) {
+function limpiarHistorial(mensajes, perfil, nombre) {
   if (!Array.isArray(mensajes) || mensajes.length === 0 || mensajes.length > MAX_MENSAJES) return null;
   const out = [];
   for (const m of mensajes) {
@@ -70,7 +63,8 @@ function limpiarHistorial(mensajes, perfil) {
   while (out.length && out[0].role === "assistant") out.shift();
   if (!out.length || out[out.length - 1].role !== "user") return null;
   // La conversación arranca con el saludo fijo de Arcana que la clienta ve en pantalla.
-  if (perfil) return [{ role: "user", content: `Hola. [Datos guardados de esta clienta en su equipo: ${perfil.nombre}, nacida el ${perfil.fecha} en ${perfil.ciudad}. Ya te los dio en una visita anterior: no se los vuelvas a pedir.${notaOtros(perfil.otros)}${notaLecturas(perfil.lecturas)}]` + notaNatal(perfil.fecha) }, { role: "assistant", content: saludoDe(perfil) }, ...out];
+  if (perfil) return [{ role: "user", content: `Hola. [Datos guardados en la cuenta de esta clienta: ${perfil.nombre}, nacida el ${perfil.fecha} en ${perfil.ciudad}. Ya te los dio en una visita anterior: no se los vuelvas a pedir.${notaOtros(perfil.otros)}${notaLecturas(perfil.lecturas)}]` + notaNatal(perfil.fecha) }, { role: "assistant", content: saludoDe(perfil) }, ...out];
+  if (nombre) return [{ role: "user", content: `Hola. [Esta clienta ya creó su cuenta: se llama ${nombre}. No le pidas el nombre; pídele solo su fecha y la ciudad donde nació, y guárdalas con guardar_datos.]` }, { role: "assistant", content: saludoNuevo(nombre) }, ...out];
   return [{ role: "user", content: "Hola" }, { role: "assistant", content: SALUDO }, ...out];
 }
 
@@ -84,8 +78,15 @@ export default async function handler(req, res) {
   let body;
   try { body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {}; }
   catch { return res.status(400).json({ error: "La conversación no es válida." }); }
-  const perfil = perfilValido(body.perfil);
-  const mensajes = limpiarHistorial(body.messages, perfil);
+  // Con base de datos, cada consulta exige una cuenta con sesión abierta: así las consultas y planes siguen a la clienta en cualquier equipo.
+  let cuenta = null;
+  if (hayBaseDeDatos()) {
+    try { cuenta = await cuentaDeToken(tokenDe(req)); } catch (e) { console.error("Sesión", e); return res.status(503).json({ error: "No pude verificar tu cuenta. Intenta de nuevo en un momento." }); }
+    if (!cuenta) return res.status(401).json({ login: true, error: "Entra con tu cuenta para continuar." });
+  }
+  const dispositivo = cuenta ? claveDeCuenta(cuenta.id) : body.dispositivo;
+  const perfil = cuenta ? perfilDeCuenta(cuenta) : perfilValido(body.perfil);
+  const mensajes = limpiarHistorial(body.messages, perfil, cuenta && !perfil ? cuenta.nombre : null);
   if (!mensajes) return res.status(400).json({ error: "La conversación no es válida." });
   // Si la clienta acaba de dar su fecha de nacimiento, el signo y el número de vida se calculan aquí (sin errores de suma).
   const ultimo = mensajes[mensajes.length - 1];
@@ -95,10 +96,10 @@ export default async function handler(req, res) {
   }
 
   // Consultas gratis y suscripción.
-  if (!idValido(body.dispositivo) || !idValido(body.consulta)) return res.status(400).json({ error: "Recarga la página para empezar una consulta." });
+  if (!idValido(dispositivo) || !idValido(body.consulta)) return res.status(400).json({ error: "Recarga la página para empezar una consulta." });
   // Topes de conversación antes de llamar a la IA (cada mensaje cuesta).
   try {
-    const rev = await revisarMensaje({ dispositivo: body.dispositivo, ip });
+    const rev = await revisarMensaje({ dispositivo, ip });
     if (!rev.ok && rev.motivo === "dia") return res.status(429).json({ error: "Por hoy ya conversamos mucho. Vuelve mañana y seguimos con tu lectura." });
     if (!rev.ok) return res.status(402).json({ suscripcion: true, pendiente: rev.pendiente, agotado: rev.agotado || undefined, ...datosDeposito() });
     // Con un plan activo, Arcana debe saber que ya puede seguir aunque antes en la conversación se haya bloqueado.
@@ -108,7 +109,7 @@ export default async function handler(req, res) {
   let cobro = null, bloqueo = null;
   async function cobrar() {
     if (cobro) return cobro;
-    try { cobro = await usarConsulta({ dispositivo: body.dispositivo, ip, pais: req.headers["x-vercel-ip-country"], ref: typeof body.ref === "string" ? body.ref.toUpperCase() : "" }); }
+    try { cobro = await usarConsulta({ dispositivo, ip, pais: req.headers["x-vercel-ip-country"], ref: typeof body.ref === "string" ? body.ref.toUpperCase() : "" }); }
     catch (e) { console.error("Acceso", e); cobro = { permitido: false, error: true }; }
     if (!cobro.permitido && !cobro.error) bloqueo = { suscripcion: true, pendiente: cobro.pendiente, agotado: cobro.agotado || undefined, ...datosDeposito() };
     return cobro;
@@ -184,7 +185,7 @@ export default async function handler(req, res) {
       try {
         // Si ya se mostró el plan (y se cobró), la baraja no cobra otra vez; se verifica en la base, no solo en el historial.
         // barajaSinCobro solo deja pasar una baraja por consulta cobrada en las últimas 3 horas.
-        const yaCobrada = /Plan mostrado/.test(memo) || await barajaSinCobro({ dispositivo: body.dispositivo, ip }).catch(() => false);
+        const yaCobrada = /Plan mostrado/.test(memo) || await barajaSinCobro({ dispositivo, ip }).catch(() => false);
         if (!yaCobrada) {
           const c = await cobrar();
           if (c.error) return ERROR_ACCESO;
@@ -229,7 +230,7 @@ export default async function handler(req, res) {
   let perfilNuevo = null;
   const guardarDatos = betaTool({
     name: "guardar_datos",
-    description: "Guarda en el equipo de la clienta su nombre completo, fecha y ciudad de nacimiento, para no volver a pedírselos en otra visita. Úsala una sola vez, apenas tengas los tres datos.",
+    description: "Guarda en la cuenta de la clienta la fecha y ciudad de nacimiento (y el nombre) de ella o de la otra persona por quien consulta, para no volver a pedírselos en otra visita. Úsala una sola vez por persona, apenas tengas los datos.",
     inputSchema: {
       type: "object",
       properties: {
@@ -245,6 +246,10 @@ export default async function handler(req, res) {
     run: async ({ nombre, fecha_nacimiento, ciudad, para, relacion }) => {
       const p = perfilValido({ nombre, fecha: fecha_nacimiento, ciudad, relacion: para === "otra" ? relacion : "" });
       perfilNuevo = p ? { ...p, para: para === "otra" ? "otra" : "titular" } : null;
+      if (perfilNuevo && cuenta) {
+        cuenta.datos = datosConPerfil(cuenta.datos, perfilNuevo);
+        await guardarDatosCuenta(cuenta.id, cuenta.datos).catch((e) => console.error("Guardar datos", e));
+      }
       return perfilNuevo ? "Guardado. Continúa con la conversación sin mencionar que guardaste nada." : "No se pudo guardar (revisa la fecha dd/mm/aaaa). Continúa igual.";
     },
   });
@@ -308,8 +313,8 @@ export default async function handler(req, res) {
     }
     const text = final.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").replace(/[*#_`]/g, "").trim();
     // Guarda la conversación (texto, sin fotos ni notas internas) para que Diana la revise. Se avisa en pantalla.
-    if (hayBaseDeDatos()) await guardarConversacion(body.consulta, body.dispositivo, textoParaGuardar(body.messages, text), perfil ? perfil.nombre : (perfilNuevo && perfilNuevo.para === "titular" ? perfilNuevo.nombre : null)).catch((e) => console.error("Conversación", e));
-    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, ...(bloqueo || {}) });
+    if (hayBaseDeDatos()) await guardarConversacion(body.consulta, dispositivo, textoParaGuardar(body.messages, text), cuenta ? cuenta.nombre : perfil ? perfil.nombre : (perfilNuevo && perfilNuevo.para === "titular" ? perfilNuevo.nombre : null)).catch((e) => console.error("Conversación", e));
+    return res.status(200).json({ text: text || "Perdona, no alcancé a responder. ¿Me lo repites?", memo: memo || undefined, baraja: baraja || undefined, diagrama: dibujo || undefined, plan: indice || undefined, perfil: perfilNuevo || undefined, miCuenta: perfilNuevo && cuenta ? publica(cuenta) : undefined, ...(bloqueo || {}) });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) return res.status(429).json({ error: "Hay muchas consultas en este momento. Espera unos segundos y vuelve a intentar." });
     if (error instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: "La clave de Anthropic no es válida. Revisa la configuración en Vercel." });

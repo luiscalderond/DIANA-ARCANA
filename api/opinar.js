@@ -1,11 +1,13 @@
 // POST /api/opinar — guarda la calificación (1 a 5 estrellas) y el comentario de la clienta al terminar la lectura.
 import * as db from "../lib/db.js";
 import { leerCuerpo, idValido } from "../lib/acceso.js";
+import { cuentaDeToken, tokenDe, claveDeCuenta } from "../lib/cuentas.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
   let b; try { b = leerCuerpo(req); } catch { return res.status(400).json({ error: "Datos no válidos." }); }
-  const dispositivo = String(b.dispositivo || "").slice(0, 80);
+  const cuenta = db.hayBaseDeDatos() ? await cuentaDeToken(tokenDe(req)).catch(() => null) : null;
+  const dispositivo = cuenta ? claveDeCuenta(cuenta.id) : String(b.dispositivo || "").slice(0, 80);
   const estrellas = Math.round(Number(b.estrellas));
   if (!idValido(dispositivo) || !(estrellas >= 1 && estrellas <= 5)) return res.status(400).json({ error: "Elige de 1 a 5 estrellas." });
   if (!db.hayBaseDeDatos()) return res.status(200).json({ ok: true });
