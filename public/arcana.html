@@ -311,6 +311,15 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid va
 .btn.wa{background:#25d366;border-color:#25d366;color:#0b2a17;text-decoration:none;justify-content:center}
 
 @media (prefers-reduced-motion:no-preference){.msg.thinking{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{opacity:.5}}}
+.inv-suerte{flex:none;align-self:stretch;display:flex;align-items:center;gap:14px;text-align:left;border:1px solid var(--candle);border-radius:16px;padding:12px 16px;cursor:pointer;color:var(--ink);font:inherit;position:relative;overflow:hidden;background:linear-gradient(120deg,rgba(217,180,106,.14),rgba(29,20,51,.9) 60%)}
+.inv-suerte::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,240,200,.18) 50%,transparent 60%);background-size:250% 100%;animation:oroBrillo 4s linear infinite;pointer-events:none}
+.inv-suerte .mini-abanico{position:relative;flex:none;width:58px;height:52px}
+.inv-suerte .mini-abanico i{position:absolute;left:19px;bottom:0;width:22px;height:38px;border-radius:4px;background:url(/dorso-oro.svg) center/100% 100%;box-shadow:0 2px 6px rgba(0,0,0,.5);transform-origin:50% 150%}
+.inv-suerte .mini-abanico i:nth-child(1){transform:rotate(-18deg)}.inv-suerte .mini-abanico i:nth-child(3){transform:rotate(18deg)}
+.inv-suerte .txt{display:grid;gap:2px}.inv-suerte b{font-family:var(--display);font-size:20px;font-weight:600;color:#f3d99a}.inv-suerte small{color:var(--mist);font-size:14px}
+.inv-suerte:disabled{cursor:default;opacity:.7}.inv-suerte:disabled::after{display:none}
+@media (prefers-reduced-motion:no-preference){.inv-suerte{animation:invEntra .8s ease-out 1.2s backwards}@keyframes invEntra{from{opacity:0;transform:translateY(10px)}}}
+@media (prefers-reduced-motion:reduce){.inv-suerte::after{animation:none}}
 /* Juego «Escoge tu suerte»: mazo de arcanos mayores con lomo dorado, una vez al día tras la lectura. */
 .suerte{position:fixed;inset:0;z-index:70;background:radial-gradient(75% 60% at 50% 55%,#2c1b4a 0%,#170f29 55%,#05030a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px 16px;text-align:center;overflow:hidden;touch-action:manipulation}
 .suerte .fondo{position:absolute;inset:0;pointer-events:none;overflow:hidden}
@@ -1247,13 +1256,14 @@ function suerteDeHoyUsada() {
   try { return localStorage.getItem(claveSuerte()) === hoyLocal(); } catch { return false; }
 }
 // Aparece cuando la clienta llega al final de su lectura (no la interrumpe mientras lee).
+// No interrumpe: deja una invitación dentro del chat, debajo de la lectura, y la clienta la abre cuando quiera.
 function prepararSuerte(ancla) {
-  if (suerteDeHoyUsada() || !ancla || !("IntersectionObserver" in window)) return;
-  const ob = new IntersectionObserver((es) => {
-    if (!es.some((e) => e.isIntersecting)) return;
-    ob.disconnect(); setTimeout(() => { if (!suerteDeHoyUsada() && !$("suerte")) mostrarSuerte(); }, 1500);
-  }, { threshold: 0.5 });
-  ob.observe(ancla);
+  if (suerteDeHoyUsada() || !ancla || document.querySelector(".inv-suerte")) return;
+  const b = el("button", { type: "button", class: "inv-suerte", "aria-label": "Abrir tu carta de la suerte de hoy" },
+    el("span", { class: "mini-abanico", "aria-hidden": "true" }, el("i"), el("i"), el("i")),
+    el("span", { class: "txt" }, el("b", { text: "Tu carta de la suerte te espera" }), el("small", { text: "Toca para escogerla cuando quieras ✦" })));
+  b.onclick = () => { if (b.disabled) return; mostrarSuerte(); b.disabled = true; b.querySelector("b").textContent = "Ya escogiste tu carta de hoy"; b.querySelector("small").textContent = "Mañana te espera otra ✦"; };
+  ancla.after(b);
 }
 function mostrarSuerte() {
   try { localStorage.setItem(claveSuerte(), hoyLocal()); } catch {}
