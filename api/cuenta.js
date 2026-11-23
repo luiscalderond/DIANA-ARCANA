@@ -4,7 +4,7 @@ import * as cu from "../lib/cuentas.js";
 import { leerCuerpo, idValido, ipDe } from "../lib/acceso.js";
 import { buscarFecha } from "../lib/numerologia.js";
 import { hayCorreo, enviarCorreo } from "../lib/correo.js";
-import { saludoCuenta, siguienteVisita } from "../lib/perfil.js";
+import { saludoCuenta, siguienteVisita, hoyEcuador } from "../lib/perfil.js";
 // Cada entrada a la app cuenta como visita del día, para no repetir el saludo.
 async function contarVisita(c) {
   const datos = { ...(c.datos || {}), visita: siguienteVisita(c.datos) };
@@ -123,6 +123,12 @@ export default async function handler(req, res) {
     if (b.accion === "salir") { await cu.cerrarSesion(token).catch(() => {}); return res.status(200).json({ ok: true }); }
     const c = await cu.cuentaDeToken(token);
     if (!c) return res.status(401).json({ error: "Tu sesión terminó. Vuelve a entrar." });
+    // La carta de la suerte sale una sola vez al día por cuenta, en cualquier equipo.
+    if (b.accion === "suerte") {
+      const datos = { ...(c.datos || {}), suerte: hoyEcuador() };
+      await cu.guardarDatosCuenta(c.id, datos).catch(() => {});
+      return res.status(200).json({ ok: true });
+    }
     if (b.accion === "lectura") {
       const l = b.lectura || {};
       const r = { f: limpio(l.f, 10), t: limpio(l.t, 60), c: limpio(l.c, 200), x: limpio(l.x, 400) };

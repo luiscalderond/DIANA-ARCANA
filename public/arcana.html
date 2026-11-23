@@ -1241,8 +1241,11 @@ const SUERTE = [
   ["El Mundo", "Un ciclo se completa con éxito. Celebra: lo que deseabas está más cerca que nunca."],
 ];
 const claveSuerte = () => "arcana-suerte-" + (cuenta ? cuenta.id : dispositivo);
-const hoyLocal = () => new Date().toLocaleDateString("en-CA");
-function suerteDeHoyUsada() { try { return localStorage.getItem(claveSuerte()) === hoyLocal(); } catch { return false; } }
+const hoyLocal = () => new Date(Date.now() - 5 * 36e5).toISOString().slice(0, 10); // fecha de Ecuador, igual que el servidor
+function suerteDeHoyUsada() {
+  if (cuenta && cuenta.datos && cuenta.datos.suerte === hoyLocal()) return true; // guardado en la cuenta: vale en cualquier equipo
+  try { return localStorage.getItem(claveSuerte()) === hoyLocal(); } catch { return false; }
+}
 // Aparece cuando la clienta llega al final de su lectura (no la interrumpe mientras lee).
 function prepararSuerte(ancla) {
   if (suerteDeHoyUsada() || !ancla || !("IntersectionObserver" in window)) return;
@@ -1254,6 +1257,7 @@ function prepararSuerte(ancla) {
 }
 function mostrarSuerte() {
   try { localStorage.setItem(claveSuerte(), hoyLocal()); } catch {}
+  if (cuenta) { cuenta.datos = { ...(cuenta.datos || {}), suerte: hoyLocal() }; fetch("/api/cuenta", { method: "POST", headers: conSesion({ "Content-Type": "application/json" }), body: JSON.stringify({ accion: "suerte" }) }).catch(() => {}); }
   const box = el("div", { id: "suerte", class: "suerte", role: "dialog", "aria-modal": "true", "aria-label": "Escoge tu suerte" });
   const fondo = el("div", { class: "fondo", "aria-hidden": "true" }, el("div", { class: "halo" }), el("div", { class: "vineta" }));
   const foco = el("div", { class: "foco" }); fondo.append(foco);
